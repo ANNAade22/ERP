@@ -1,0 +1,32 @@
+{
+    "architecture": {
+        "type": "monolithic",
+        "frontend": {
+            "framework": "React",
+            "features": [
+                "PWA",
+                "Role-based UI",
+                "Offline support"
+            ]
+        },
+        "backend": {
+            "language": "Go",
+            "framework": "Gin",
+            "pattern": "Handler-Service-Repository",
+            "authentication": "JWT + Refresh Token",
+            "authorization": "Role-Based Access Control"
+        },
+        "database": {
+            "type": "PostgreSQL",
+            "strategy": "Relational with foreign keys",
+            "transactions": true
+        },
+        "storage": {
+            "type": "Object storage",
+            "usage": [
+                "Site photos",
+                "Documents"
+            ]
+        }
+    }
+}

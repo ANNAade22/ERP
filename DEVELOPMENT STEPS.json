@@ -1,0 +1,69 @@
+{
+    "development_plan": [
+        {
+            "step": 1,
+            "name": "Setup Project Structure",
+            "tasks": [
+                "Initialize Go module",
+                "Setup Gin router",
+                "Setup database connection",
+                "Create base folder structure"
+            ]
+        },
+        {
+            "step": 2,
+            "name": "Build Authentication",
+            "tasks": [
+                "User model",
+                "Password hashing",
+                "JWT generation",
+                "Role middleware"
+            ]
+        },
+        {
+            "step": 3,
+            "name": "Build Project Module",
+            "tasks": [
+                "Project model",
+                "CRUD endpoints",
+                "Budget calculation"
+            ]
+        },
+        {
+            "step": 4,
+            "name": "Build Attendance Module",
+            "tasks": [
+                "Worker model",
+                "Attendance model",
+                "Mark attendance API"
+            ]
+        },
+        {
+            "step": 5,
+            "name": "Build Financial Module",
+            "tasks": [
+                "Expense model",
+                "Link to project",
+                "Aggregation queries"
+            ]
+        },
+        {
+            "step": 6,
+            "name": "Build Procurement & Inventory",
+            "tasks": [
+                "Material model",
+                "Stock management",
+                "Request approval workflow"
+            ]
+        },
+        {
+            "step": 7,
+            "name": "Build Dashboard",
+            "tasks": [
+                "Aggregation queries",
+                "Dashboard endpoint",
+                "Summary metrics"
+            ]
+        }
+    ]
+}

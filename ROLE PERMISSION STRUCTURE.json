@@ -1,0 +1,64 @@
+{
+    "permissions": {
+        "ADMIN": {
+            "access": "ALL",
+            "manage_users": true
+        },
+        "PROJECT_MANAGER": {
+            "projects": [
+                "view",
+                "update"
+            ],
+            "attendance": [
+                "view"
+            ],
+            "expenses": [
+                "view"
+            ],
+            "procurement": [
+                "approve"
+            ],
+            "vendors": [
+                "view"
+            ]
+        },
+        "SITE_ENGINEER": {
+            "projects": [
+                "view_assigned"
+            ],
+            "attendance": [
+                "create"
+            ],
+            "procurement": [
+                "create_request"
+            ],
+            "vendors": []
+        },
+        "ACCOUNTANT": {
+            "expenses": [
+                "create",
+                "view"
+            ],
+            "finance_reports": [
+                "view"
+            ],
+            "vendors": [
+                "view"
+            ]
+        },
+        "STORE_OFFICER": {
+            "inventory": [
+                "create",
+                "update"
+            ],
+            "procurement": [
+                "process"
+            ],
+            "vendors": [
+                "create",
+                "update",
+                "view"
+            ]
+        }
+    }
+}

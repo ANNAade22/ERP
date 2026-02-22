@@ -1,0 +1,82 @@
+{
+    "modules": [
+        {
+            "name": "Authentication",
+            "priority": 1,
+            "features": [
+                "User registration",
+                "Login",
+                "Refresh token",
+                "Role middleware"
+            ]
+        },
+        {
+            "name": "Projects",
+            "priority": 2,
+            "features": [
+                "Create project",
+                "Assign manager",
+                "Set budget",
+                "Project status"
+            ]
+        },
+        {
+            "name": "Attendance",
+            "priority": 3,
+            "features": [
+                "Worker management",
+                "Mark attendance",
+                "Check-in/check-out",
+                "Project-based filtering"
+            ]
+        },
+        {
+            "name": "Expenses",
+            "priority": 4,
+            "features": [
+                "Add expense",
+                "Expense category",
+                "Link to project",
+                "Budget vs actual calculation"
+            ]
+        },
+        {
+            "name": "Vendors",
+            "priority": 5,
+            "features": [
+                "Add vendor",
+                "Edit vendor",
+                "Vendor contact info",
+                "Link vendor to purchase"
+            ]
+        },
+        {
+            "name": "Procurement",
+            "priority": 6,
+            "features": [
+                "Material request",
+                "Approval workflow",
+                "Purchase record"
+            ]
+        },
+        {
+            "name": "Inventory",
+            "priority": 7,
+            "features": [
+                "Material list",
+                "Stock tracking",
+                "Stock movement log"
+            ]
+        },
+        {
+            "name": "Dashboard",
+            "priority": 8,
+            "features": [
+                "KPI summary",
+                "Cost breakdown",
+                "Attendance rate",
+                "Material usage"
+            ]
+        }
+    ]
+}

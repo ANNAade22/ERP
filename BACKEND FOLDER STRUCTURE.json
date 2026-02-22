@@ -1,0 +1,69 @@
+{
+    "folder_structure": {
+        "cmd": [
+            "main.go"
+        ],
+        "internal": {
+            "auth": [
+                "handler.go",
+                "service.go",
+                "repository.go",
+                "model.go"
+            ],
+            "users": [
+                "handler.go",
+                "service.go",
+                "repository.go",
+                "model.go"
+            ],
+            "projects": [
+                "handler.go",
+                "service.go",
+                "repository.go",
+                "model.go"
+            ],
+            "attendance": [
+                "handler.go",
+                "service.go",
+                "repository.go",
+                "model.go"
+            ],
+            "expenses": [
+                "handler.go",
+                "service.go",
+                "repository.go",
+                "model.go"
+            ],
+            "procurement": [
+                "handler.go",
+                "service.go",
+                "repository.go",
+                "model.go"
+            ],
+            "inventory": [
+                "handler.go",
+                "service.go",
+                "repository.go",
+                "model.go"
+            ],
+            "dashboard": [
+                "handler.go",
+                "service.go",
+                "repository.go"
+            ]
+        },
+        "pkg": {
+            "database": [
+                "connection.go"
+            ],
+            "middleware": [
+                "auth.go",
+                "role.go"
+            ],
+            "utils": [
+                "response.go",
+                "validator.go"
+            ]
+        }
+    }
+}
