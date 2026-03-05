@@ -118,12 +118,15 @@ button {
   font-size: inherit;
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   font-family: inherit;
   font-size: inherit;
 }
 
-ul, ol {
+ul,
+ol {
   list-style: none;
 }
 
@@ -1527,6 +1530,85 @@ img {
   margin-bottom: 0;
 }
 
+/* ---------- Modal ---------- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.modal-title {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-subtitle {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+}
+
+.modal-close {
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
+  padding: var(--space-1);
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: var(--space-6);
+}
+
+.modal-footer {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  background: var(--bg);
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1200px) {
   .cards-grid.cols-3 {
@@ -1581,5 +1663,399 @@ img {
 
   .main-content {
     padding: var(--space-4);
+  }
+}
+
+/* ---------- Gantt Chart & Milestones ---------- */
+
+/* Gantt container (GanttMilestones page) */
+.gantt-container .gantt-header {
+  display: grid;
+  grid-template-columns: 220px 1fr 80px;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-2);
+  align-items: center;
+}
+
+.gantt-container .gantt-row-label {
+  min-width: 0;
+  font-size: var(--font-sm);
+}
+
+.gantt-container .gantt-timeline {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  min-height: 28px;
+  align-items: center;
+}
+
+.gantt-container .gantt-day-header {
+  flex: 1;
+  min-width: 48px;
+  max-width: 56px;
+  text-align: center;
+  padding: var(--space-2) var(--space-1);
+  color: var(--text-secondary);
+  font-weight: 500;
+  border-right: 1px solid var(--border-light);
+}
+
+.gantt-container .gantt-day-header:last-child {
+  border-right: none;
+}
+
+.gantt-container .gantt-day-num {
+  display: block;
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.gantt-container .gantt-day-month {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Per-milestone: each milestone has its own timeline row on top, then bar row */
+.gantt-container.gantt-per-milestone {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.gantt-milestone-block {
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.gantt-milestone-block:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.gantt-milestone-timeline-row,
+.gantt-milestone-bar-row {
+  display: grid;
+  grid-template-columns: 220px 1fr 80px;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.gantt-milestone-timeline-row {
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-2);
+}
+
+.gantt-milestone-bar-row {
+  padding-bottom: var(--space-2);
+}
+
+.gantt-timeline-dates {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  align-items: stretch;
+  background: var(--bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+}
+
+/* Timeline row: middle cell stretches so date row matches bar width */
+.gantt-milestone-timeline-row .gantt-timeline-dates {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Day headers in per-milestone timeline distribute to end of bar */
+.gantt-milestone-timeline-row .gantt-timeline-dates .gantt-day-header {
+  flex: 1 1 0;
+  min-width: 40px;
+  max-width: none;
+}
+
+.gantt-row-label-empty {
+  min-height: 0;
+}
+
+.gantt-milestone-bar-row .gantt-timeline,
+.gantt-milestone-bar-row .gantt-timeline-full {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+.gantt-milestone-bar-row .gantt-timeline-full .gantt-bar-container {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.gantt-milestone-bar-row .gantt-bar-track {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gantt-container .gantt-row {
+  display: grid;
+  grid-template-columns: 220px 1fr 80px;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-light);
+  align-items: center;
+}
+
+.gantt-container .gantt-bar-container {
+  position: relative;
+  width: 100%;
+  height: 24px;
+  background: var(--border-light);
+  border-radius: var(--radius-full);
+  overflow: visible;
+}
+
+.gantt-container .gantt-bar-track {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  min-width: 24px;
+  border-radius: var(--radius-full);
+  background: var(--border-light);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+/* Each row gets its own full-width bar (same width for all), fill = progress % */
+.gantt-container .gantt-timeline-full .gantt-bar-container {
+  position: relative;
+  width: 100%;
+  height: 28px;
+}
+
+.gantt-container .gantt-timeline-full .gantt-bar-track {
+  position: relative;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.gantt-container .gantt-bar-fill {
+  height: 100%;
+  min-width: 2px;
+  border-radius: var(--radius-full);
+  transition: width 0.2s ease;
+  flex-shrink: 0;
+}
+
+.gantt-container .gantt-bar-label {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  text-shadow: 0 0 2px rgba(0,0,0,0.2);
+  pointer-events: none;
+}
+
+/* Gantt Timeline Header (legacy) */
+.gantt-header {
+  display: grid;
+  grid-template-columns: 200px 1fr 180px;
+  gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-2);
+}
+
+.gantt-label-col {
+  min-width: 200px;
+}
+
+.gantt-timeline-col {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+
+.gantt-month {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.gantt-info-col {
+  min-width: 180px;
+  text-align: right;
+}
+
+/* Gantt Row */
+.gantt-row {
+  display: grid;
+  grid-template-columns: 200px 1fr 180px;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border-light);
+  align-items: center;
+}
+
+.gantt-row:last-child {
+  border-bottom: none;
+}
+
+.gantt-project-name {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.gantt-project-id {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Gantt Track & Bar */
+.gantt-track {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  background: var(--border-light);
+  border-radius: var(--radius-full);
+  overflow: visible;
+}
+
+.gantt-bar {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: #e0e7ff;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  min-width: 20px;
+}
+
+.gantt-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, #3b82f6 100%);
+  border-radius: var(--radius-full);
+  transition: width 0.4s ease;
+}
+
+.gantt-dates {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
+.gantt-percent {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+
+/* Milestone List Items */
+.milestone-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.milestone-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-5) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.milestone-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.milestone-item-info {
+  flex: 1;
+}
+
+.milestone-item-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.milestone-item-title {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.milestone-item-meta {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.milestone-item-id {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.milestone-item-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.milestone-progress-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.milestone-progress-text {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 36px;
+}
+
+/* Circular Progress SVG */
+.circular-progress {
+  display: block;
+}
+
+@media (max-width: 768px) {
+
+  .gantt-header,
+  .gantt-row {
+    grid-template-columns: 140px 1fr 120px;
+  }
+
+  .milestone-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .milestone-item-actions {
+    align-self: flex-end;
   }
 }

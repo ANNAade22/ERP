@@ -1,0 +1,13 @@
+{
+  "name": "erp-project",
+  "private": true,
+  "scripts": {
+    "backend": "go run main.go",
+    "frontend": "npm run dev --prefix frontend",
+    "dev": "concurrently -n backend,frontend -c blue,green \"go run main.go\" \"npm run dev --prefix frontend\"",
+    "dev:backend": "go run main.go"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
