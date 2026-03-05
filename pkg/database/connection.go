@@ -44,6 +44,8 @@ func Connect(cfg Config) (*gorm.DB, error) {
 		&models.Material{},
 		&models.PurchaseRequest{},
 		&models.StockMovement{},
+		&models.Milestone{},
+		&models.SitePhoto{},
 	)
 	if err != nil {
 		return nil, err

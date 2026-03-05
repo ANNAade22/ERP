@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"erp-project/internal/attendance"
@@ -17,6 +18,7 @@ import (
 	"erp-project/pkg/database"
 	"erp-project/pkg/middleware"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -45,6 +47,8 @@ func main() {
 	// Initialize Repositories
 	userRepo := users.NewRepository(db)
 	projectRepo := projects.NewRepository(db)
+	milestoneRepo := projects.NewMilestoneRepository(db)
+	photoRepo := projects.NewPhotoRepository(db)
 	attendanceRepo := attendance.NewRepository(db)
 	expenseRepo := expenses.NewRepository(db)
 	procurementRepo := procurement.NewRepository(db)
@@ -53,6 +57,7 @@ func main() {
 	// Initialize Services
 	userService := users.NewService(userRepo)
 	projectService := projects.NewService(projectRepo)
+	milestoneService := projects.NewMilestoneService(milestoneRepo)
 	attendanceService := attendance.NewService(attendanceRepo)
 	expenseService := expenses.NewService(expenseRepo, projectRepo)
 	procurementService := procurement.NewService(procurementRepo)
@@ -67,6 +72,15 @@ func main() {
 	userHandler := users.NewHandler(userService)
 	authHandler := auth.NewHandler(authService)
 	projectHandler := projects.NewHandler(projectService)
+	milestoneHandler := projects.NewMilestoneHandler(milestoneService)
+	uploadDir := os.Getenv("UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = "./uploads"
+	}
+	if err := os.MkdirAll(filepath.Join(uploadDir, "projects"), 0755); err != nil {
+		log.Printf("Warning: could not create upload dir: %v", err)
+	}
+	photoHandler := projects.NewPhotoHandler(photoRepo, projectRepo, uploadDir)
 	attendanceHandler := attendance.NewHandler(attendanceService)
 	expenseHandler := expenses.NewHandler(expenseService)
 	procurementHandler := procurement.NewHandler(procurementService)
@@ -76,6 +90,15 @@ func main() {
 
 	// Setup Gin Router
 	r := gin.Default()
+
+	// Enable CORS
+	r.Use(cors.New(cors.Config{
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization", "Accept"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Routes
 	api := r.Group("/api/v1")
@@ -93,17 +116,25 @@ func main() {
 		{
 			protected.GET("/profile", userHandler.GetProfile)
 
-			// Projects CRUD
+			// Projects CRUD — register more specific routes first (/:id/...) before generic /:id
 			projectGroup := protected.Group("/projects")
 			{
 				projectGroup.POST("", middleware.RoleMiddleware(models.RoleAdmin), projectHandler.CreateProject)
 				projectGroup.GET("", projectHandler.GetAllProjects)
+
+				// Sub-resources under /projects/:id (must be before GET/PUT/DELETE /:id)
+				projectGroup.GET("/:id/milestones", milestoneHandler.GetProjectMilestones)
+				projectGroup.POST("/:id/milestones", middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager), milestoneHandler.CreateMilestone)
+				projectGroup.GET("/:id/workers", attendanceHandler.GetWorkersByProject)
+				projectGroup.GET("/:id/photos", photoHandler.ListPhotos)
+				projectGroup.POST("/:id/photos", middleware.RoleMiddleware(models.RoleSiteEngineer, models.RoleAdmin, models.RoleProjectManager), photoHandler.UploadPhoto)
+				projectGroup.GET("/:id/photos/:photoId/file", photoHandler.ServePhotoFile)
+				projectGroup.DELETE("/:id/photos/:photoId", middleware.RoleMiddleware(models.RoleSiteEngineer, models.RoleAdmin, models.RoleProjectManager), photoHandler.DeletePhoto)
+
+				// Single project (less specific)
 				projectGroup.GET("/:id", projectHandler.GetProject)
 				projectGroup.PUT("/:id", middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager), projectHandler.UpdateProject)
 				projectGroup.DELETE("/:id", middleware.RoleMiddleware(models.RoleAdmin), projectHandler.DeleteProject)
-
-				// Workers under a project
-				projectGroup.GET("/:id/workers", attendanceHandler.GetWorkersByProject)
 			}
 
 			// Workers
@@ -163,6 +194,15 @@ func main() {
 
 			// Dashboard
 			protected.GET("/dashboard", dashboardHandler.GetDashboard)
+
+			// Milestone Dashboard & Management
+			milestoneGroup := protected.Group("/milestones")
+			{
+				milestoneGroup.GET("/dashboard-stats", milestoneHandler.GetDashboardStats)
+				milestoneGroup.GET("/:id", milestoneHandler.GetMilestone)
+				milestoneGroup.PUT("/:id", middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager), milestoneHandler.UpdateMilestone)
+				milestoneGroup.DELETE("/:id", middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager), milestoneHandler.DeleteMilestone)
+			}
 		}
 	}
 

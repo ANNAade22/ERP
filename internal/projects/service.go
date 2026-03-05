@@ -13,24 +13,33 @@ var (
 )
 
 type CreateProjectRequest struct {
-	Name        string  `json:"name" binding:"required"`
-	Description string  `json:"description"`
-	Location    string  `json:"location"`
-	Budget      float64 `json:"budget" binding:"gte=0"`
-	StartDate   string  `json:"start_date"` // format: YYYY-MM-DD
-	EndDate     string  `json:"end_date"`   // format: YYYY-MM-DD
-	ManagerID   string  `json:"manager_id" binding:"required"`
+	Name        string               `json:"name" binding:"required"`
+	Description string               `json:"description"`
+	Location    string               `json:"location"`
+	Status      models.ProjectStatus `json:"status"`
+	Budget      float64              `json:"budget" binding:"gte=0"`
+	StartDate   string               `json:"start_date"` // format: YYYY-MM-DD
+	EndDate     string               `json:"end_date"`   // format: YYYY-MM-DD
+	Category    string               `json:"category"`
+	Timeline    string               `json:"timeline"`
+	TeamSize    int                  `json:"team_size"`
+	Engineer    string               `json:"engineer"`
+	ManagerID   string               `json:"manager_id"`
 }
 
 type UpdateProjectRequest struct {
-	Name        *string              `json:"name"`
-	Description *string              `json:"description"`
-	Location    *string              `json:"location"`
+	Name        *string               `json:"name"`
+	Description *string               `json:"description"`
+	Location    *string               `json:"location"`
 	Status      *models.ProjectStatus `json:"status"`
-	Budget      *float64             `json:"budget"`
-	StartDate   *string              `json:"start_date"`
-	EndDate     *string              `json:"end_date"`
-	ManagerID   *string              `json:"manager_id"`
+	Budget      *float64              `json:"budget"`
+	StartDate   *string               `json:"start_date"`
+	EndDate     *string               `json:"end_date"`
+	Category    *string               `json:"category"`
+	Timeline    *string               `json:"timeline"`
+	TeamSize    *int                  `json:"team_size"`
+	Engineer    *string               `json:"engineer"`
+	ManagerID   *string               `json:"manager_id"`
 }
 
 type Service interface {
@@ -51,14 +60,28 @@ func NewService(repo Repository) Service {
 }
 
 func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest, createdBy string) (*models.Project, error) {
+	// If a ManagerID isn't provided, default to the creator
+	managerID := req.ManagerID
+	if managerID == "" {
+		managerID = createdBy
+	}
+
+	status := req.Status
+	if status == "" {
+		status = models.ProjectStatusPlanning
+	}
 	project := &models.Project{
 		Name:        req.Name,
 		Description: req.Description,
 		Location:    req.Location,
 		Budget:      req.Budget,
-		ManagerID:   req.ManagerID,
+		ManagerID:   managerID,
 		CreatedBy:   createdBy,
-		Status:      models.ProjectStatusPlanning,
+		Status:      status,
+		Category:    req.Category,
+		Timeline:    req.Timeline,
+		TeamSize:    req.TeamSize,
+		Engineer:    req.Engineer,
 	}
 
 	if req.StartDate != "" {
@@ -122,6 +145,18 @@ func (s *service) UpdateProject(ctx context.Context, id string, req UpdateProjec
 	}
 	if req.ManagerID != nil {
 		project.ManagerID = *req.ManagerID
+	}
+	if req.Category != nil {
+		project.Category = *req.Category
+	}
+	if req.Timeline != nil {
+		project.Timeline = *req.Timeline
+	}
+	if req.TeamSize != nil {
+		project.TeamSize = *req.TeamSize
+	}
+	if req.Engineer != nil {
+		project.Engineer = *req.Engineer
 	}
 	if req.StartDate != nil {
 		t, err := time.Parse("2006-01-02", *req.StartDate)

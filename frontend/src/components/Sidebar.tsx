@@ -37,7 +37,10 @@ const menuItems: MenuItem[] = [
     {
         label: 'Projects',
         icon: <FolderKanban size={20} />,
-        path: '/projects',
+        children: [
+            { label: 'Project Management', path: '/projects' },
+            { label: 'Gantt & Milestones', path: '/projects/gantt-milestones' },
+        ],
     },
     {
         label: 'Vendors',

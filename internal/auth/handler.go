@@ -40,7 +40,7 @@ func (h *Handler) Register(c *gin.Context) {
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid request payload")
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 

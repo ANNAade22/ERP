@@ -1,15 +1,34 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import api from '../utils/api'
 
 export default function Login() {
     const navigate = useNavigate()
+    const { login } = useAuth()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [error, setError] = useState('')
+    const [loading, setLoading] = useState(false)
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        // TODO: Integrate with backend JWT auth
-        navigate('/dashboard')
+        setError('')
+        setLoading(true)
+
+        try {
+            const response = await api.post('/auth/login', { email, password })
+            if (response.data.success) {
+                login(response.data.data.token)
+                navigate('/dashboard')
+            } else {
+                setError(response.data.message || 'Failed to login')
+            }
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Failed to login')
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -26,6 +45,8 @@ export default function Login() {
                 <div className="login-subtitle">
                     Sign in to your Construction ERP account
                 </div>
+
+                {error && <div style={{ color: 'red', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
@@ -54,8 +75,8 @@ export default function Login() {
                         />
                     </div>
 
-                    <button type="submit" className="btn btn-primary login-btn">
-                        Sign In
+                    <button type="submit" className="btn btn-primary login-btn" disabled={loading}>
+                        {loading ? 'Signing in...' : 'Sign In'}
                     </button>
                 </form>
             </div>

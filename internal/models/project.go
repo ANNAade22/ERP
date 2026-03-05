@@ -26,10 +26,16 @@ type Project struct {
 	SpentAmount float64        `gorm:"type:decimal(15,2);default:0" json:"spent_amount"`
 	StartDate   *time.Time     `gorm:"type:date" json:"start_date"`
 	EndDate     *time.Time     `gorm:"type:date" json:"end_date"`
+	Category    string         `gorm:"type:varchar(100)" json:"category"`
+	Timeline    string         `gorm:"type:varchar(100)" json:"timeline"`
+	TeamSize    int            `gorm:"type:int" json:"team_size"`
+	Engineer    string         `gorm:"type:varchar(255)" json:"engineer"`
 	ManagerID   string         `gorm:"type:uuid;not null" json:"manager_id"`
 	Manager     *User          `gorm:"foreignKey:ManagerID" json:"manager,omitempty"`
 	CreatedBy   string         `gorm:"type:uuid;not null" json:"created_by"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+
+	Milestones []Milestone `gorm:"foreignKey:ProjectID" json:"milestones,omitempty"`
 }
