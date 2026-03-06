@@ -1,14 +1,35 @@
+import { useState, useRef, useEffect } from 'react'
 import { Search, User, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'
 
 export default function Header() {
-    const { logout, user } = useAuth();
-    const navigate = useNavigate();
+    const { logout, user } = useAuth()
+    const navigate = useNavigate()
+    const [dropdownOpen, setDropdownOpen] = useState(false)
+    const dropdownRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setDropdownOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    const displayName = user?.role === 'ADMIN' ? 'Admin' : (user?.email?.split('@')[0] || 'User')
 
     const handleLogout = () => {
-        logout();
-        navigate('/login');
+        setDropdownOpen(false)
+        logout()
+        navigate('/login')
+    }
+
+    const handleNav = (path: string) => {
+        setDropdownOpen(false)
+        navigate(path)
     }
 
     return (
@@ -19,18 +40,48 @@ export default function Header() {
                     <input type="text" placeholder="Search projects, vendors, materials..." />
                 </div>
             </div>
-            <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <div className="header-user">
-                    <User className="header-user-icon" size={20} />
-                    <span>{user?.email || 'User'}</span>
+            <div className="header-right">
+                <div className="header-user-dropdown" ref={dropdownRef}>
+                    <button
+                        type="button"
+                        className="header-user-trigger"
+                        onClick={() => setDropdownOpen((o) => !o)}
+                        aria-expanded={dropdownOpen}
+                        aria-haspopup="true"
+                    >
+                        <User className="header-user-icon" size={20} />
+                        <span>{displayName}</span>
+                    </button>
+                    {dropdownOpen && (
+                        <div className="header-user-menu">
+                            <button
+                                type="button"
+                                className="header-user-menu-item header-user-menu-item-bold"
+                                onClick={() => handleNav('/settings')}
+                            >
+                                My Account
+                            </button>
+                            <div className="header-user-menu-divider" />
+                            <button
+                                type="button"
+                                className="header-user-menu-item"
+                                onClick={() => handleNav('/settings')}
+                            >
+                                <User size={18} />
+                                View Profile
+                            </button>
+                            <div className="header-user-menu-divider" />
+                            <button
+                                type="button"
+                                className="header-user-menu-item header-user-menu-item-logout"
+                                onClick={handleLogout}
+                            >
+                                <LogOut size={18} />
+                                Logout
+                            </button>
+                        </div>
+                    )}
                 </div>
-                <button
-                    onClick={handleLogout}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}
-                    title="Logout"
-                >
-                    <LogOut size={20} />
-                </button>
             </div>
         </header>
     )

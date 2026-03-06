@@ -132,9 +132,11 @@ export default function Projects() {
         }
     }
 
-    const fetchProjects = async () => {
+    const POLL_INTERVAL_MS = 30_000
+
+    const fetchProjects = async (isInitial = true) => {
         try {
-            setLoading(true)
+            if (isInitial) setLoading(true)
             const response = await api.get('/projects')
             if (response.data.success) {
                 const list = response.data.data as Project[]
@@ -159,12 +161,14 @@ export default function Projects() {
             setError(err.response?.data?.message || 'Failed to fetch projects')
             console.error(err)
         } finally {
-            setLoading(false)
+            if (isInitial) setLoading(false)
         }
     }
 
     useEffect(() => {
-        fetchProjects()
+        fetchProjects(true)
+        const interval = setInterval(() => fetchProjects(false), POLL_INTERVAL_MS)
+        return () => clearInterval(interval)
     }, [])
 
     const normalizedStatus = (s: string) => s.toUpperCase().replace(/\s+/g, '_')
@@ -384,7 +388,7 @@ export default function Projects() {
                     <FolderPlus size={48} style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-4)' }} />
                     <h3 style={{ margin: '0 0 var(--space-2)', fontSize: 'var(--font-lg)' }}>No projects yet</h3>
                     <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-6)' }}>Create your first project to get started.</p>
-                    <button type="button" className="btn btn-primary" onClick={openCreate}>+ New Project</button>
+                    <button type="button" className="btn btn-primary" onClick={openCreateModal}>+ New Project</button>
                 </div>
             ) : sortedProjects.length === 0 ? (
                 <div className="content-card" style={{ padding: 'var(--space-12)', textAlign: 'center' }}>

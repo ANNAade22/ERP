@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
     LayoutDashboard,
@@ -9,7 +9,12 @@ import {
     DollarSign,
     Settings,
     ChevronDown,
+    ClipboardCheck,
+    UserCog,
 } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+
+type Role = 'ADMIN' | 'PROJECT_MANAGER' | 'SITE_ENGINEER' | 'ACCOUNTANT' | 'STORE_OFFICER'
 
 interface SubItem {
     label: string
@@ -21,6 +26,8 @@ interface MenuItem {
     icon: React.ReactNode
     path?: string
     children?: SubItem[]
+    /** Roles that can see this item. Omit = all roles. */
+    roles?: Role[]
 }
 
 const menuItems: MenuItem[] = [
@@ -28,11 +35,13 @@ const menuItems: MenuItem[] = [
         label: 'Dashboard',
         icon: <LayoutDashboard size={20} />,
         path: '/dashboard',
+        // all roles see dashboard
     },
     {
         label: 'Equipment',
         icon: <Wrench size={20} />,
         path: '/equipment',
+        roles: ['ADMIN', 'PROJECT_MANAGER'],
     },
     {
         label: 'Projects',
@@ -41,6 +50,13 @@ const menuItems: MenuItem[] = [
             { label: 'Project Management', path: '/projects' },
             { label: 'Gantt & Milestones', path: '/projects/gantt-milestones' },
         ],
+        roles: ['ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER'],
+    },
+    {
+        label: 'Attendance',
+        icon: <ClipboardCheck size={20} />,
+        path: '/attendance',
+        roles: ['ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER'],
     },
     {
         label: 'Vendors',
@@ -48,6 +64,7 @@ const menuItems: MenuItem[] = [
         children: [
             { label: 'Manage Contractors', path: '/vendors/contractors' },
         ],
+        roles: ['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT', 'STORE_OFFICER'],
     },
     {
         label: 'Inventory',
@@ -56,6 +73,7 @@ const menuItems: MenuItem[] = [
             { label: 'Stock Levels', path: '/inventory/stock-levels' },
             { label: 'Material Requests', path: '/inventory/material-requests' },
         ],
+        roles: ['ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER', 'STORE_OFFICER'],
     },
     {
         label: 'Finance',
@@ -63,20 +81,39 @@ const menuItems: MenuItem[] = [
         children: [
             { label: 'Budget Tracker', path: '/finance/budget-tracker' },
         ],
+        roles: ['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT'],
+    },
+    {
+        label: 'Registry',
+        icon: <UserCog size={20} />,
+        path: '/registry',
+        roles: ['ADMIN'],
     },
     {
         label: 'Settings',
         icon: <Settings size={20} />,
         path: '/settings',
+        // all roles see settings
     },
 ]
 
+function canSeeMenuItem(item: MenuItem, role: string | undefined): boolean {
+    if (!item.roles || item.roles.length === 0) return true
+    if (!role) return true
+    return item.roles.includes(role as Role)
+}
+
 export default function Sidebar() {
+    const { user } = useAuth()
     const location = useLocation()
     const navigate = useNavigate()
     const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
-    // Auto-expand menu if current path matches a child
+    const visibleMenuItems = useMemo(
+        () => menuItems.filter((item) => canSeeMenuItem(item, user?.role)),
+        [user?.role]
+    )
+
     const isActive = (path?: string) => path ? location.pathname === path : false
     const isChildActive = (children?: SubItem[]) =>
         children?.some((c) => location.pathname === c.path) ?? false
@@ -97,9 +134,9 @@ export default function Sidebar() {
         <aside className="sidebar">
             {/* Logo */}
             <div className="sidebar-logo">
-                <div className="sidebar-logo-icon">C</div>
+                <img src="/Logo.png" alt="" className="sidebar-logo-img" />
                 <div className="sidebar-logo-text">
-                    <h1>Construction ERP</h1>
+                    <h1>Silverline</h1>
                     <span>Admin Dashboard</span>
                 </div>
             </div>
@@ -109,7 +146,7 @@ export default function Sidebar() {
 
             {/* Navigation */}
             <nav className="sidebar-nav">
-                {menuItems.map((item) => {
+                {visibleMenuItems.map((item) => {
                     const active = isActive(item.path) || isChildActive(item.children)
                     const isOpen = expanded[item.label] || isChildActive(item.children)
 

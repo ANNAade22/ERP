@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
+import RoleGuard from '../components/RoleGuard'
 
 export default function MainLayout() {
     return (
@@ -9,7 +10,9 @@ export default function MainLayout() {
             <div className="main-area">
                 <Header />
                 <main className="main-content">
-                    <Outlet />
+                    <RoleGuard>
+                        <Outlet />
+                    </RoleGuard>
                 </main>
             </div>
         </div>

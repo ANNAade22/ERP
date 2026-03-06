@@ -28,6 +28,7 @@ type PurchaseRequest struct {
 	Quantity     float64               `gorm:"type:decimal(15,2);not null" json:"quantity"`
 	UnitPrice    float64               `gorm:"type:decimal(15,2);default:0" json:"unit_price"`
 	TotalPrice   float64               `gorm:"type:decimal(15,2);default:0" json:"total_price"`
+	Items        []PurchaseRequestItem `gorm:"foreignKey:PurchaseRequestID;constraint:OnDelete:CASCADE" json:"items,omitempty"`
 	Status       PurchaseRequestStatus `gorm:"type:varchar(20);default:'PENDING'" json:"status"`
 	Notes        string                `gorm:"type:text" json:"notes"`
 	RequestedBy  string                `gorm:"type:uuid;not null" json:"requested_by"`
@@ -36,4 +37,18 @@ type PurchaseRequest struct {
 	CreatedAt    time.Time             `json:"created_at"`
 	UpdatedAt    time.Time             `json:"updated_at"`
 	DeletedAt    gorm.DeletedAt        `gorm:"index" json:"-"`
+}
+
+// PurchaseRequestItem represents one line item in a multi-item request.
+type PurchaseRequestItem struct {
+	ID                string         `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	PurchaseRequestID string         `gorm:"type:uuid;not null;index" json:"purchase_request_id"`
+	MaterialID        string         `gorm:"type:uuid;not null" json:"material_id"`
+	Material          *Material      `gorm:"foreignKey:MaterialID" json:"material,omitempty"`
+	Quantity          float64        `gorm:"type:decimal(15,2);not null" json:"quantity"`
+	UnitPrice         float64        `gorm:"type:decimal(15,2);default:0" json:"unit_price"`
+	TotalPrice        float64        `gorm:"type:decimal(15,2);default:0" json:"total_price"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+	DeletedAt         gorm.DeletedAt `gorm:"index" json:"-"`
 }

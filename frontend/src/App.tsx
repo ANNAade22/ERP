@@ -11,6 +11,8 @@ import StockLevels from './pages/inventory/StockLevels'
 import MaterialRequests from './pages/inventory/MaterialRequests'
 import BudgetTracker from './pages/finance/BudgetTracker'
 import Settings from './pages/Settings'
+import Attendance from './pages/Attendance'
+import Registry from './pages/Registry'
 import Login from './pages/Login'
 import { useAuth } from './context/AuthContext'
 
@@ -47,6 +49,8 @@ function App() {
                 <Route path="inventory/stock-levels" element={<StockLevels />} />
                 <Route path="inventory/material-requests" element={<MaterialRequests />} />
                 <Route path="finance/budget-tracker" element={<BudgetTracker />} />
+                <Route path="attendance" element={<Attendance />} />
+                <Route path="registry" element={<Registry />} />
                 <Route path="settings" element={<Settings />} />
             </Route>
         </Routes>

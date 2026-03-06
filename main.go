@@ -115,6 +115,10 @@ func main() {
 		protected.Use(middleware.AuthMiddleware(jwtSecret))
 		{
 			protected.GET("/profile", userHandler.GetProfile)
+			protected.GET("/users", middleware.RoleMiddleware(models.RoleAdmin), userHandler.ListUsers)
+			protected.PATCH("/users/:id/role", middleware.RoleMiddleware(models.RoleAdmin), userHandler.UpdateUserRole)
+			protected.PATCH("/users/:id/password", middleware.RoleMiddleware(models.RoleAdmin), userHandler.ResetUserPassword)
+			protected.DELETE("/users/:id", middleware.RoleMiddleware(models.RoleAdmin), userHandler.DeleteUser)
 
 			// Projects CRUD — register more specific routes first (/:id/...) before generic /:id
 			projectGroup := protected.Group("/projects")
@@ -175,10 +179,17 @@ func main() {
 			{
 				procurementGroup.POST("", middleware.RoleMiddleware(models.RoleSiteEngineer, models.RoleStoreOfficer, models.RoleAdmin), procurementHandler.CreatePurchaseRequest)
 				procurementGroup.GET("", procurementHandler.GetPurchaseRequestsByProject)
+				procurementGroup.GET("/all", procurementHandler.GetAllPurchaseRequests)
 				procurementGroup.GET("/pending", middleware.RoleMiddleware(models.RoleProjectManager, models.RoleAdmin), procurementHandler.GetPendingRequests)
 				procurementGroup.GET("/:id", procurementHandler.GetPurchaseRequest)
-				procurementGroup.PATCH("/:id/status", middleware.RoleMiddleware(models.RoleProjectManager, models.RoleAdmin), procurementHandler.UpdatePurchaseRequestStatus)
+				procurementGroup.PATCH("/:id", middleware.RoleMiddleware(models.RoleSiteEngineer, models.RoleStoreOfficer, models.RoleAdmin), procurementHandler.UpdatePurchaseRequest)
+				procurementGroup.PATCH("/:id/status", middleware.RoleMiddleware(models.RoleProjectManager, models.RoleAdmin, models.RoleStoreOfficer), procurementHandler.UpdatePurchaseRequestStatus)
 			}
+			protected.GET(
+				"/procurement/orders/recent",
+				middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager, models.RoleStoreOfficer, models.RoleSiteEngineer),
+				procurementHandler.GetRecentOrders,
+			)
 
 			// Inventory
 			inventoryGroup := protected.Group("/inventory")

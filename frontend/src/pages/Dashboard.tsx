@@ -8,8 +8,11 @@ import {
     Package,
     AlertTriangle,
     ArrowRight,
+    ClipboardList,
+    Truck,
 } from 'lucide-react'
 import api from '../utils/api'
+import { useAuth } from '../context/AuthContext'
 
 interface DashboardData {
     overview: {
@@ -50,177 +53,501 @@ interface DashboardData {
         approved_requests: number
         total_purchase_value: number
     }
+    expense_breakdown?: { category: string; total: number }[]
 }
 
-export default function Dashboard() {
-    const [data, setData] = useState<DashboardData | null>(null)
-    const [loading, setLoading] = useState(true)
+type Role = 'ADMIN' | 'PROJECT_MANAGER' | 'SITE_ENGINEER' | 'ACCOUNTANT' | 'STORE_OFFICER'
 
-    useEffect(() => {
-        const fetchDashboard = async () => {
-            try {
-                const response = await api.get('/dashboard')
-                if (response.data.success) {
-                    setData(response.data.data)
-                }
-            } catch (error) {
-                console.error('Failed to fetch dashboard data', error)
-            } finally {
-                setLoading(false)
-            }
-        }
-        fetchDashboard()
-    }, [])
+type StatItem = {
+    title: string
+    value: string
+    subtitle: string
+    subtitleType: string
+    icon: React.ReactNode
+    to?: string
+}
 
-    if (loading) {
-        return <div style={{ padding: '2rem' }}>Loading dashboard...</div>
+function StatCard({ stat }: { stat: StatItem }) {
+    const content = (
+        <>
+            <div className="stat-card-header">
+                <span className="stat-card-title">{stat.title}</span>
+                <span className="stat-card-icon">{stat.icon}</span>
+            </div>
+            <div className="stat-card-value">{stat.value}</div>
+            <div className={`stat-card-subtitle ${stat.subtitleType}`}>{stat.subtitle}</div>
+        </>
+    )
+    if (stat.to) {
+        return (
+            <Link to={stat.to} className="stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+                {content}
+            </Link>
+        )
     }
+    return <div className="stat-card">{content}</div>
+}
 
-    if (!data || !data.overview) {
-        return <div style={{ padding: '2rem', color: 'var(--danger-color)' }}>Failed to load dashboard data.</div>
-    }
-
-    const overview = data.overview
-    const project_summaries = data.project_summaries || []
-    const low_stock_alerts = data.low_stock_alerts || []
-    const attendance_summaries = data.attendance_summaries || []
-    const procurement = data.procurement || { pending_requests: 0, approved_requests: 0, total_purchase_value: 0 }
-
-    // Calculate labor attendance average
-    const avgAttendance = attendance_summaries.length > 0
-        ? attendance_summaries.reduce((acc, curr) => acc + curr.attendance_rate, 0) / attendance_summaries.length
-        : 0;
+// --- Admin: full overview
+function AdminDashboard({ data }: { data: DashboardData }) {
+    const { overview, project_summaries, attendance_summaries, low_stock_alerts, procurement } = data
+    const avgAttendance =
+        attendance_summaries.length > 0
+            ? attendance_summaries.reduce((acc, curr) => acc + curr.attendance_rate, 0) / attendance_summaries.length
+            : 0
 
     const stats = [
-        {
-            title: 'Active Projects',
-            value: overview.active_projects.toString(),
-            subtitle: `${overview.total_projects} total projects`,
-            subtitleType: 'info',
-            icon: <Building2 size={20} />
-        },
-        {
-            title: 'Budget Utilization',
-            value: `${overview.budget_utilization.toFixed(1)}%`,
-            subtitle: `$${overview.total_spent.toLocaleString()} / $${overview.total_budget.toLocaleString()}`,
-            subtitleType: overview.budget_utilization > 90 ? 'negative' : 'positive',
-            icon: <DollarSign size={20} />
-        },
-        {
-            title: 'Procurement Requests',
-            value: procurement.pending_requests.toString(),
-            subtitle: `${procurement.approved_requests} approved`,
-            subtitleType: procurement.pending_requests > 5 ? 'warning' : 'neutral',
-            icon: <TrendingUp size={20} />
-        },
-        {
-            title: 'Labor Attendance',
-            value: `${avgAttendance.toFixed(1)}%`,
-            subtitle: 'Today across all active sites',
-            subtitleType: avgAttendance > 90 ? 'positive' : 'warning',
-            icon: <Users size={20} />
-        },
-        {
-            title: 'Material Stock',
-            value: low_stock_alerts.length.toString(),
-            subtitle: 'Items low in stock',
-            subtitleType: low_stock_alerts.length > 0 ? 'negative' : 'positive',
-            icon: <Package size={20} />
-        },
-        {
-            title: 'Total Expenses',
-            value: `$${overview.total_spent.toLocaleString()}`,
-            subtitle: 'All time',
-            subtitleType: 'info',
-            icon: <AlertTriangle size={20} />
-        },
+        { title: 'Active Projects', value: overview.active_projects.toString(), subtitle: `${overview.total_projects} total projects`, subtitleType: 'info' as const, icon: <Building2 size={20} />, to: '/projects' },
+        { title: 'Budget Utilization', value: `${overview.budget_utilization.toFixed(1)}%`, subtitle: `$${overview.total_spent.toLocaleString()} / $${overview.total_budget.toLocaleString()}`, subtitleType: overview.budget_utilization > 90 ? 'negative' : 'positive', icon: <DollarSign size={20} />, to: '/finance/budget-tracker' },
+        { title: 'Procurement Requests', value: procurement.pending_requests.toString(), subtitle: `${procurement.approved_requests} approved`, subtitleType: procurement.pending_requests > 5 ? 'warning' : 'neutral', icon: <TrendingUp size={20} />, to: '/inventory/material-requests' },
+        { title: 'Labor Attendance', value: `${avgAttendance.toFixed(1)}%`, subtitle: 'Today across all sites', subtitleType: avgAttendance > 90 ? 'positive' : 'warning', icon: <Users size={20} />, to: '/attendance' },
+        { title: 'Material Stock', value: low_stock_alerts.length.toString(), subtitle: 'Items low in stock', subtitleType: low_stock_alerts.length > 0 ? 'negative' : 'positive', icon: <Package size={20} />, to: '/inventory/stock-levels' },
+        { title: 'Total Expenses', value: `$${overview.total_spent.toLocaleString()}`, subtitle: 'All time', subtitleType: 'info' as const, icon: <AlertTriangle size={20} />, to: '/finance/budget-tracker' },
     ]
 
     return (
-        <div>
-            {/* Page Header */}
-            <div className="page-header">
-                <div className="page-header-info">
-                    <h1>Dashboard</h1>
-                    <p>Welcome back! Here's what's happening with your projects today.</p>
-                </div>
-            </div>
-
-            {/* Stat Cards */}
+        <>
             <div className="stat-cards">
                 {stats.map((stat) => (
-                    <div className="stat-card" key={stat.title}>
-                        <div className="stat-card-header">
-                            <span className="stat-card-title">{stat.title}</span>
-                            <span className="stat-card-icon">{stat.icon}</span>
-                        </div>
-                        <div className="stat-card-value">{stat.value}</div>
-                        <div className={`stat-card-subtitle ${stat.subtitleType}`}>
-                            {stat.subtitle}
-                        </div>
-                    </div>
+                    <StatCard key={stat.title} stat={stat} />
+                ))}
+            </div>
+            <ProjectsOverviewSection project_summaries={project_summaries} />
+        </>
+    )
+}
+
+// --- Project Manager: projects, budget, procurement, attendance
+function ProjectManagerDashboard({ data }: { data: DashboardData }) {
+    const { overview, project_summaries, attendance_summaries, procurement } = data
+    const avgAttendance =
+        attendance_summaries.length > 0
+            ? attendance_summaries.reduce((acc, curr) => acc + curr.attendance_rate, 0) / attendance_summaries.length
+            : 0
+
+    const stats: StatItem[] = [
+        { title: 'Active Projects', value: overview.active_projects.toString(), subtitle: `${overview.total_projects} total`, subtitleType: 'info', icon: <Building2 size={20} />, to: '/projects' },
+        { title: 'Budget Utilization', value: `${overview.budget_utilization.toFixed(1)}%`, subtitle: `$${overview.total_spent.toLocaleString()} spent`, subtitleType: overview.budget_utilization > 90 ? 'negative' : 'positive', icon: <DollarSign size={20} />, to: '/finance/budget-tracker' },
+        { title: 'Pending Approvals', value: procurement.pending_requests.toString(), subtitle: 'Procurement requests', subtitleType: procurement.pending_requests > 5 ? 'warning' : 'neutral', icon: <TrendingUp size={20} />, to: '/inventory/material-requests' },
+        { title: 'Site Attendance', value: `${avgAttendance.toFixed(1)}%`, subtitle: 'Today', subtitleType: avgAttendance > 90 ? 'positive' : 'warning', icon: <Users size={20} />, to: '/attendance' },
+    ]
+
+    return (
+        <>
+            <div className="stat-cards">
+                {stats.map((stat) => (
+                    <StatCard key={stat.title} stat={stat} />
+                ))}
+            </div>
+            <ProjectsOverviewSection project_summaries={project_summaries} />
+        </>
+    )
+}
+
+// --- Site Engineer: my workspace — projects, today's attendance, quick actions
+function SiteEngineerDashboard({ data }: { data: DashboardData }) {
+    const { project_summaries, attendance_summaries, procurement } = data
+
+    const stats: StatItem[] = [
+        { title: 'My Projects', value: project_summaries.filter((p) => p.status === 'IN_PROGRESS').length.toString(), subtitle: 'Active sites', subtitleType: 'info', icon: <Building2 size={20} />, to: '/projects' },
+        { title: "Today's Attendance", value: attendance_summaries.reduce((acc, a) => acc + a.present_today, 0).toString(), subtitle: 'Workers present', subtitleType: 'info', icon: <Users size={20} />, to: '/attendance' },
+        { title: 'My Requests', value: procurement.pending_requests.toString(), subtitle: 'Pending procurement', subtitleType: 'info', icon: <ClipboardList size={20} />, to: '/inventory/material-requests' },
+    ]
+
+    return (
+        <>
+            <div className="stat-cards">
+                {stats.map((stat) => (
+                    <StatCard key={stat.title} stat={stat} />
                 ))}
             </div>
 
-            {/* Active Projects */}
             <div className="content-card">
                 <div className="content-card-header">
                     <div>
-                        <div className="content-card-title">Projects Overview</div>
-                        <div className="content-card-subtitle">Financial and progress overview of projects</div>
+                        <div className="content-card-title">Quick actions</div>
+                        <div className="content-card-subtitle">Common tasks for your sites</div>
                     </div>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', padding: '0.5rem 0' }}>
                     <Link to="/projects" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                        View all projects <ArrowRight size={16} />
+                        <Building2 size={18} /> View projects
+                    </Link>
+                    <Link to="/projects/gantt-milestones" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <ClipboardList size={18} /> Gantt & milestones
+                    </Link>
+                    <Link to="/inventory/material-requests" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Package size={18} /> Material requests
                     </Link>
                 </div>
+            </div>
 
-                {project_summaries.length === 0 ? (
-                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        No projects found.
+            {attendance_summaries.length > 0 && (
+                <div className="content-card">
+                    <div className="content-card-header">
+                        <div>
+                            <div className="content-card-title">Today's attendance by site</div>
+                            <div className="content-card-subtitle">Present workers per project</div>
+                        </div>
                     </div>
-                ) : (
-                    project_summaries.map((project) => (
-                        <div className="active-project" key={project.id}>
-                            <div className="active-project-header">
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                        {attendance_summaries.map((a) => (
+                            <li key={a.project_id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span>{a.project_name}</span>
+                                    <span><strong>{a.present_today}</strong> / {a.total_workers} ({a.attendance_rate.toFixed(0)}%)</span>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            <ProjectsOverviewSection project_summaries={project_summaries} compact />
+        </>
+    )
+}
+
+// --- Accountant: expenses, budget, finance
+function AccountantDashboard({ data }: { data: DashboardData }) {
+    const { overview, project_summaries, expense_breakdown = [] } = data
+
+    const stats: StatItem[] = [
+        { title: 'Total Spent', value: `$${overview.total_spent.toLocaleString()}`, subtitle: 'All projects', subtitleType: 'info', icon: <DollarSign size={20} />, to: '/finance/budget-tracker' },
+        { title: 'Budget utilization', value: `${overview.budget_utilization.toFixed(1)}%`, subtitle: `$${overview.total_budget.toLocaleString()} total budget`, subtitleType: 'info', icon: <TrendingUp size={20} />, to: '/finance/budget-tracker' },
+        { title: 'Remaining', value: `$${overview.budget_remaining.toLocaleString()}`, subtitle: `Across ${overview.total_projects} projects`, subtitleType: 'info', icon: <DollarSign size={20} />, to: '/finance/budget-tracker' },
+    ]
+
+    return (
+        <>
+            <div className="stat-cards">
+                {stats.map((stat) => (
+                    <StatCard key={stat.title} stat={stat} />
+                ))}
+            </div>
+
+            {expense_breakdown.length > 0 && (
+                <div className="content-card">
+                    <div className="content-card-header">
+                        <div>
+                            <div className="content-card-title">Expenses by category</div>
+                            <div className="content-card-subtitle">Approved expenses breakdown</div>
+                        </div>
+                        <Link to="/finance/budget-tracker" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                            Budget tracker <ArrowRight size={16} />
+                        </Link>
+                    </div>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                        {expense_breakdown.map((e) => (
+                            <li key={e.category} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>{e.category}</span>
+                                <strong>${e.total.toLocaleString()}</strong>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            <ProjectsOverviewSection project_summaries={project_summaries} />
+        </>
+    )
+}
+
+// --- Store Officer: inventory, procurement
+function StoreOfficerDashboard({ data }: { data: DashboardData }) {
+    const { low_stock_alerts, procurement } = data
+
+    const stats: StatItem[] = [
+        { title: 'Low stock items', value: low_stock_alerts.length.toString(), subtitle: 'Need restock', subtitleType: low_stock_alerts.length > 0 ? 'negative' : 'positive', icon: <Package size={20} />, to: '/inventory/stock-levels' },
+        { title: 'Pending requests', value: procurement.pending_requests.toString(), subtitle: 'To process', subtitleType: 'info', icon: <ClipboardList size={20} />, to: '/inventory/material-requests' },
+        { title: 'Purchase value', value: `$${procurement.total_purchase_value.toLocaleString()}`, subtitle: 'Approved / ordered', subtitleType: 'info', icon: <DollarSign size={20} />, to: '/inventory/material-requests' },
+    ]
+
+    return (
+        <>
+            <div className="stat-cards">
+                {stats.map((stat) => (
+                    <StatCard key={stat.title} stat={stat} />
+                ))}
+            </div>
+
+            {low_stock_alerts.length > 0 && (
+                <div className="content-card">
+                    <div className="content-card-header">
+                        <div>
+                            <div className="content-card-title">Low stock alerts</div>
+                            <div className="content-card-subtitle">Materials at or below minimum</div>
+                        </div>
+                        <Link to="/inventory/stock-levels" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                            Stock levels <ArrowRight size={16} />
+                        </Link>
+                    </div>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                        {low_stock_alerts.slice(0, 10).map((m) => (
+                            <li key={m.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                    <Link to={`/projects/${project.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                        <div className="active-project-name">{project.name}</div>
-                                    </Link>
+                                    <strong>{m.name}</strong>
+                                    <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{m.project_name}</span>
                                 </div>
-                                <div className="active-project-budget">
-                                    <span className={`badge badge-${project.status === 'COMPLETED' ? 'success' : project.status === 'ON_HOLD' ? 'warning' : 'info'}`}>
-                                        {project.status.replace('_', ' ')}
-                                    </span>
-                                    <div className="active-project-budget-value">${project.budget.toLocaleString()}</div>
-                                </div>
-                            </div>
+                                <span className="badge badge-warning">{m.current_stock} / {m.min_stock} {m.unit}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
 
-                            <div className="active-project-meta">
-                                <span className="active-project-meta-item">
-                                    Spent: ${project.spent_amount.toLocaleString()}
-                                </span>
-                                <span className="active-project-meta-item">
-                                    Remaining: ${project.remaining.toLocaleString()}
-                                </span>
-                            </div>
+            <div className="content-card">
+                <div className="content-card-header">
+                    <div>
+                        <div className="content-card-title">Quick links</div>
+                        <div className="content-card-subtitle">Inventory & procurement</div>
+                    </div>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', padding: '0.5rem 0' }}>
+                    <Link to="/inventory/stock-levels" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Package size={18} /> Stock levels
+                    </Link>
+                    <Link to="/inventory/material-requests" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <ClipboardList size={18} /> Material requests
+                    </Link>
+                    <Link to="/vendors/contractors" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Truck size={18} /> Vendors
+                    </Link>
+                </div>
+            </div>
+        </>
+    )
+}
 
-                            <div className="active-project-progress">
-                                <span className="active-project-progress-label">Budget Used</span>
-                                <div className="progress-bar" style={{ flex: 1 }}>
-                                    <div
-                                        className="progress-bar-fill"
-                                        style={{
-                                            width: `${Math.min(project.percent_used, 100)}%`,
-                                            backgroundColor: project.percent_used > 90 ? 'var(--danger-color)' : project.percent_used > 75 ? 'var(--warning-color)' : 'var(--primary-color)'
-                                        }}
-                                    />
-                                </div>
-                                <span className="active-project-progress-value">{project.percent_used.toFixed(1)}%</span>
+// --- Shared: projects list
+function ProjectsOverviewSection({
+    project_summaries,
+    compact = false,
+}: {
+    project_summaries: DashboardData['project_summaries']
+    compact?: boolean
+}) {
+    return (
+        <div className="content-card">
+            <div className="content-card-header">
+                <div>
+                    <div className="content-card-title">{compact ? 'Projects' : 'Projects overview'}</div>
+                    <div className="content-card-subtitle">
+                        {compact ? 'Your projects' : 'Financial and progress overview'}
+                    </div>
+                </div>
+                <Link to="/projects" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                    View all <ArrowRight size={16} />
+                </Link>
+            </div>
+            {project_summaries.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    No projects found.
+                </div>
+            ) : (
+                project_summaries.map((project) => (
+                    <div className="active-project" key={project.id}>
+                        <div className="active-project-header">
+                            <div>
+                                <Link to={`/projects/${project.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                    <div className="active-project-name">{project.name}</div>
+                                </Link>
+                            </div>
+                            <div className="active-project-budget">
+                                <span className={`badge badge-${project.status === 'COMPLETED' ? 'success' : project.status === 'ON_HOLD' ? 'warning' : 'info'}`}>
+                                    {project.status.replace('_', ' ')}
+                                </span>
+                                <div className="active-project-budget-value">${project.budget.toLocaleString()}</div>
                             </div>
                         </div>
-                    ))
-                )}
+                        <div className="active-project-meta">
+                            <span className="active-project-meta-item">Spent: ${project.spent_amount.toLocaleString()}</span>
+                            <span className="active-project-meta-item">Remaining: ${project.remaining.toLocaleString()}</span>
+                        </div>
+                        <div className="active-project-progress">
+                            <span className="active-project-progress-label">Budget used</span>
+                            <div className="progress-bar" style={{ flex: 1 }}>
+                                <div
+                                    className="progress-bar-fill"
+                                    style={{
+                                        width: `${Math.min(project.percent_used, 100)}%`,
+                                        backgroundColor:
+                                            project.percent_used > 90 ? 'var(--danger-color)' : project.percent_used > 75 ? 'var(--warning-color)' : 'var(--primary-color)',
+                                    }}
+                                />
+                            </div>
+                            <span className="active-project-progress-value">{project.percent_used.toFixed(1)}%</span>
+                        </div>
+                    </div>
+                ))
+            )}
+        </div>
+    )
+}
+
+// --- Role config: title and subtitle per role
+const ROLE_DASHBOARD_CONFIG: Record<Role, { title: string; subtitle: string }> = {
+    ADMIN: {
+        title: 'Dashboard',
+        subtitle: "Welcome back! Here's the full overview of projects, budget, and operations.",
+    },
+    PROJECT_MANAGER: {
+        title: 'Project Manager Dashboard',
+        subtitle: 'Projects, budget utilization, and team attendance at a glance.',
+    },
+    SITE_ENGINEER: {
+        title: 'My workspace',
+        subtitle: 'Your sites, today’s attendance, and quick actions.',
+    },
+    ACCOUNTANT: {
+        title: 'Finance dashboard',
+        subtitle: 'Expenses, budget utilization, and financial overview.',
+    },
+    STORE_OFFICER: {
+        title: 'Inventory & procurement',
+        subtitle: 'Stock levels, low-stock alerts, and purchase requests.',
+    },
+}
+
+// Safe defaults so we never crash on missing API fields
+const DEFAULT_OVERVIEW = {
+    total_projects: 0,
+    active_projects: 0,
+    total_budget: 0,
+    total_spent: 0,
+    budget_remaining: 0,
+    budget_utilization: 0,
+}
+const DEFAULT_PROCUREMENT = { pending_requests: 0, approved_requests: 0, total_purchase_value: 0 }
+
+function normalizeDashboardData(raw: unknown): DashboardData {
+    const d = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+    return {
+        overview: (d.overview && typeof d.overview === 'object' ? d.overview : {}) as DashboardData['overview'],
+        project_summaries: Array.isArray(d.project_summaries) ? d.project_summaries as DashboardData['project_summaries'] : [],
+        attendance_summaries: Array.isArray(d.attendance_summaries) ? d.attendance_summaries as DashboardData['attendance_summaries'] : [],
+        low_stock_alerts: Array.isArray(d.low_stock_alerts) ? d.low_stock_alerts as DashboardData['low_stock_alerts'] : [],
+        procurement: (d.procurement && typeof d.procurement === 'object' ? d.procurement : {}) as DashboardData['procurement'],
+        expense_breakdown: Array.isArray(d.expense_breakdown) ? d.expense_breakdown as DashboardData['expense_breakdown'] : undefined,
+    }
+}
+
+function ensureOverview(data: DashboardData): DashboardData {
+    const rawOverview = (data.overview && typeof data.overview === 'object' ? data.overview : {}) as Partial<DashboardData['overview']>
+    const rawProc = (data.procurement && typeof data.procurement === 'object' ? data.procurement : {}) as Partial<DashboardData['procurement']>
+    return {
+        ...data,
+        overview: {
+            total_projects: Number(rawOverview.total_projects) || 0,
+            active_projects: Number(rawOverview.active_projects) || 0,
+            total_budget: Number(rawOverview.total_budget) || 0,
+            total_spent: Number(rawOverview.total_spent) || 0,
+            budget_remaining: Number(rawOverview.budget_remaining) || 0,
+            budget_utilization: Number(rawOverview.budget_utilization) || 0,
+        },
+        procurement: {
+            pending_requests: Number(rawProc.pending_requests) || 0,
+            approved_requests: Number(rawProc.approved_requests) || 0,
+            total_purchase_value: Number(rawProc.total_purchase_value) || 0,
+        },
+    }
+}
+
+export default function Dashboard() {
+    const { user } = useAuth()
+    const [data, setData] = useState<DashboardData | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => {
+            setError('Request timed out. Is the backend running at http://localhost:8080?')
+            setLoading(false)
+            controller.abort()
+        }, 15000)
+
+        const fetchDashboard = async () => {
+            let canceled = false
+            try {
+                const response = await api.get('/dashboard', { signal: controller.signal })
+                clearTimeout(timeoutId)
+                if (response.data?.success && response.data?.data != null) {
+                    const normalized = normalizeDashboardData(response.data.data)
+                    setData(ensureOverview(normalized))
+                    setError(null)
+                } else {
+                    setError('Dashboard data was not available.')
+                }
+            } catch (e: unknown) {
+                clearTimeout(timeoutId)
+                const isCanceled =
+                    (e instanceof Error && (e.name === 'AbortError' || e.name === 'CanceledError')) ||
+                    (e && typeof e === 'object' && 'code' in e && (e as { code: string }).code === 'ERR_CANCELED')
+                if (isCanceled) {
+                    canceled = true
+                    return
+                }
+                console.error('Failed to fetch dashboard data', e)
+                setError('Could not load dashboard. Check that the server is running and you are signed in.')
+            } finally {
+                if (!canceled) setLoading(false)
+            }
+        }
+        fetchDashboard()
+        return () => {
+            clearTimeout(timeoutId)
+            controller.abort()
+        }
+    }, [])
+
+    if (loading) {
+        return (
+            <div style={{ padding: '2rem' }}>
+                <div className="page-header">
+                    <div className="page-header-info">
+                        <h1>Dashboard</h1>
+                        <p>Loading…</p>
+                    </div>
+                </div>
             </div>
+        )
+    }
+
+    if (error || !data) {
+        return (
+            <div className="page-header" style={{ padding: '2rem' }}>
+                <div className="page-header-info">
+                    <h1>Dashboard</h1>
+                    <p style={{ color: '#0f172a', marginTop: '0.5rem', marginBottom: '1rem' }}>{error || 'Failed to load dashboard data.'}</p>
+                    <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-secondary)' }}>
+                        Make sure the backend is running at <code style={{ background: '#f1f5f9', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>http://localhost:8080</code> and you are logged in.
+                    </p>
+                </div>
+            </div>
+        )
+    }
+
+    const role = (user?.role ?? 'ADMIN') as Role
+    const config = ROLE_DASHBOARD_CONFIG[role] ?? ROLE_DASHBOARD_CONFIG.ADMIN
+
+    return (
+        <div>
+            <div className="page-header">
+                <div className="page-header-info">
+                    <h1>{config.title}</h1>
+                    <p>{config.subtitle}</p>
+                </div>
+            </div>
+
+            {role === 'ADMIN' && <AdminDashboard data={data} />}
+            {role === 'PROJECT_MANAGER' && <ProjectManagerDashboard data={data} />}
+            {role === 'SITE_ENGINEER' && <SiteEngineerDashboard data={data} />}
+            {role === 'ACCOUNTANT' && <AccountantDashboard data={data} />}
+            {role === 'STORE_OFFICER' && <StoreOfficerDashboard data={data} />}
+            {!['ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER', 'ACCOUNTANT', 'STORE_OFFICER'].includes(role) && (
+                <AdminDashboard data={data} />
+            )}
         </div>
     )
 }
