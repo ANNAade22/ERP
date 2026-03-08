@@ -3,10 +3,13 @@ package expenses
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"erp-project/internal/models"
 	projectsPkg "erp-project/internal/projects"
+
+	"gorm.io/gorm"
 )
 
 var (
@@ -39,10 +42,11 @@ type Service interface {
 type service struct {
 	repo       Repository
 	projectRepo projectsPkg.Repository
+	db         *gorm.DB
 }
 
-func NewService(repo Repository, projectRepo projectsPkg.Repository) Service {
-	return &service{repo: repo, projectRepo: projectRepo}
+func NewService(repo Repository, projectRepo projectsPkg.Repository, db *gorm.DB) Service {
+	return &service{repo: repo, projectRepo: projectRepo, db: db}
 }
 
 func (s *service) CreateExpense(ctx context.Context, req CreateExpenseRequest, createdBy string) (*models.Expense, error) {
@@ -99,37 +103,60 @@ func (s *service) UpdateExpenseStatus(ctx context.Context, id string, req Update
 		return nil, ErrExpenseNotFound
 	}
 
-	expense.Status = req.Status
-	if req.Status == models.ExpenseStatusApproved {
-		expense.ApprovedBy = &approvedBy
-	}
+	projectID := expense.ProjectID
 
-	err = s.repo.Update(ctx, expense)
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		expense.Status = req.Status
+		if req.Status == models.ExpenseStatusApproved {
+			expense.ApprovedBy = &approvedBy
+		}
+		if err := tx.Save(expense).Error; err != nil {
+			return err
+		}
+		// Recalc project spent_amount on any status change (approve or reject)
+		var totalSpent float64
+		if err := tx.Model(&models.Expense{}).
+			Where("project_id = ? AND status = ?", projectID, models.ExpenseStatusApproved).
+			Select("COALESCE(SUM(amount), 0)").
+			Scan(&totalSpent).Error; err != nil {
+			return err
+		}
+		return tx.Model(&models.Project{}).Where("id = ?", projectID).Update("spent_amount", totalSpent).Error
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Update project spent_amount after approval
-	if req.Status == models.ExpenseStatusApproved {
-		totalSpent, err := s.repo.GetTotalSpentByProject(ctx, expense.ProjectID)
-		if err == nil {
-			project, err := s.projectRepo.GetByID(ctx, expense.ProjectID)
-			if err == nil {
-				project.SpentAmount = totalSpent
-				_ = s.projectRepo.Update(ctx, project)
-			}
-		}
-	}
-
-	return s.repo.GetByID(ctx, expense.ID)
+	log.Printf("[expense] status_updated expense_id=%s project_id=%s new_status=%s by=%s", id, projectID, req.Status, approvedBy)
+	return s.repo.GetByID(ctx, id)
 }
 
 func (s *service) DeleteExpense(ctx context.Context, id string) error {
-	_, err := s.repo.GetByID(ctx, id)
+	expense, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return ErrExpenseNotFound
 	}
-	return s.repo.Delete(ctx, id)
+	projectID := expense.ProjectID
+
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("id = ?", id).Delete(&models.Expense{}).Error; err != nil {
+			return err
+		}
+		var totalSpent float64
+		if err := tx.Model(&models.Expense{}).
+			Where("project_id = ? AND status = ?", projectID, models.ExpenseStatusApproved).
+			Select("COALESCE(SUM(amount), 0)").
+			Scan(&totalSpent).Error; err != nil {
+			return err
+		}
+		return tx.Model(&models.Project{}).Where("id = ?", projectID).Update("spent_amount", totalSpent).Error
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Printf("[expense] deleted expense_id=%s project_id=%s", id, projectID)
+	return nil
 }
 
 func (s *service) GetProjectExpenseSummary(ctx context.Context, projectID string) (*ProjectExpenseSummary, error) {

@@ -1254,6 +1254,43 @@ img {
   margin-bottom: var(--space-4);
 }
 
+.budget-project-financial-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  background: var(--bg);
+  border-radius: var(--radius-md);
+}
+
+.budget-financial-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.budget-financial-item.budget-variance.positive .budget-metric-value {
+  color: var(--success);
+}
+
+.budget-financial-item.budget-variance.negative .budget-metric-value {
+  color: var(--danger);
+}
+
+.budget-project-progress-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.budget-progress-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .budget-metric-label {
   font-size: var(--font-sm);
   color: var(--text-secondary);

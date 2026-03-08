@@ -10,6 +10,7 @@ import (
 	"erp-project/internal/auth"
 	"erp-project/internal/dashboard"
 	"erp-project/internal/expenses"
+	"erp-project/internal/finance"
 	"erp-project/internal/inventory"
 	"erp-project/internal/models"
 	"erp-project/internal/procurement"
@@ -59,7 +60,7 @@ func main() {
 	projectService := projects.NewService(projectRepo)
 	milestoneService := projects.NewMilestoneService(milestoneRepo)
 	attendanceService := attendance.NewService(attendanceRepo)
-	expenseService := expenses.NewService(expenseRepo, projectRepo)
+	expenseService := expenses.NewService(expenseRepo, projectRepo, db)
 	procurementService := procurement.NewService(procurementRepo)
 	inventoryService := inventory.NewService(inventoryRepo)
 	jwtSecret := os.Getenv("JWT_SECRET")
@@ -87,6 +88,8 @@ func main() {
 	inventoryHandler := inventory.NewHandler(inventoryService)
 	dashboardService := dashboard.NewService(db)
 	dashboardHandler := dashboard.NewHandler(dashboardService)
+	financeService := finance.NewService(db)
+	financeHandler := finance.NewHandler(financeService)
 
 	// Setup Gin Router
 	r := gin.Default()
@@ -205,6 +208,15 @@ func main() {
 
 			// Dashboard
 			protected.GET("/dashboard", dashboardHandler.GetDashboard)
+
+			// Finance (role-protected: ADMIN, PROJECT_MANAGER, ACCOUNTANT)
+			financeGroup := protected.Group("/finance")
+			financeGroup.Use(middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager, models.RoleAccountant))
+			{
+				financeGroup.GET("/budget-overview", financeHandler.GetBudgetOverview)
+				financeGroup.GET("/profitability", financeHandler.GetProfitability)
+				financeGroup.GET("/expenses-by-month", financeHandler.GetExpensesByMonth)
+			}
 
 			// Milestone Dashboard & Management
 			milestoneGroup := protected.Group("/milestones")

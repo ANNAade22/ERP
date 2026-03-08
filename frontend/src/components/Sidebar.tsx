@@ -80,6 +80,9 @@ const menuItems: MenuItem[] = [
         icon: <DollarSign size={20} />,
         children: [
             { label: 'Budget Tracker', path: '/finance/budget-tracker' },
+            { label: 'Cash Flow', path: '/finance/cash-flow' },
+            { label: 'Profitability', path: '/finance/profitability' },
+            { label: 'Overrun Alerts', path: '/finance/overrun-alerts' },
         ],
         roles: ['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT'],
     },
@@ -99,7 +102,7 @@ const menuItems: MenuItem[] = [
 
 function canSeeMenuItem(item: MenuItem, role: string | undefined): boolean {
     if (!item.roles || item.roles.length === 0) return true
-    if (!role) return true
+    if (!role) return false // hide role-restricted items when role unknown
     return item.roles.includes(role as Role)
 }
 

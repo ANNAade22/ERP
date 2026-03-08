@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useLocation, Navigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
@@ -14,8 +15,13 @@ export default function RoleGuard({ children }: { children: React.ReactNode }) {
 
     const allowed = isPathAllowedForRole(pathname, user?.role)
 
+    useEffect(() => {
+        if (!allowed) {
+            toast.error('You don\'t have access to this page.')
+        }
+    }, [allowed])
+
     if (!allowed) {
-        toast.error('You don’t have access to this page.')
         return <Navigate to="/dashboard" replace state={{ from: pathname }} />
     }
 

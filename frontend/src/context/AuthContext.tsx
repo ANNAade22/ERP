@@ -29,14 +29,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const stored = localStorage.getItem('token');
         if (stored) {
             try {
-                const decodedToken = jwtDecode<User>(stored);
-                if (decodedToken.exp * 1000 < Date.now()) {
+                const decoded = jwtDecode<{ sub?: string; id?: string; email?: string; role?: string; exp?: number }>(stored);
+                if ((decoded.exp ?? 0) * 1000 < Date.now()) {
                     localStorage.removeItem('token');
                     setToken(null);
                     setUser(null);
                 } else {
                     setToken(stored);
-                    setUser(decodedToken);
+                    setUser({
+                        id: decoded.sub ?? decoded.id ?? '',
+                        email: decoded.email ?? '',
+                        role: decoded.role ?? '',
+                        exp: decoded.exp ?? 0,
+                    });
                 }
             } catch (error) {
                 console.error('Invalid token', error);
@@ -54,11 +59,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (!isAuthReady) return;
         if (token) {
             try {
-                const decodedToken = jwtDecode<User>(token);
-                if (decodedToken.exp * 1000 < Date.now()) {
+                const decoded = jwtDecode<{ sub?: string; id?: string; email?: string; role?: string; exp?: number }>(token);
+                if ((decoded.exp ?? 0) * 1000 < Date.now()) {
                     logout();
                 } else {
-                    setUser(decodedToken);
+                    setUser({
+                        id: decoded.sub ?? decoded.id ?? '',
+                        email: decoded.email ?? '',
+                        role: decoded.role ?? '',
+                        exp: decoded.exp ?? 0,
+                    });
                 }
             } catch (error) {
                 console.error('Invalid token', error);

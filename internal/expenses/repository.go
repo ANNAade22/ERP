@@ -35,6 +35,13 @@ type Repository interface {
 	// Aggregation queries
 	GetTotalSpentByProject(ctx context.Context, projectID string) (float64, error)
 	GetCategoryBreakdown(ctx context.Context, projectID string) ([]CategoryBreakdown, error)
+	GetExpensesByMonth(ctx context.Context, projectID string) ([]MonthTotal, error)
+}
+
+// MonthTotal holds expense total for a calendar month
+type MonthTotal struct {
+	Month string  `json:"month"` // YYYY-MM
+	Total float64 `json:"total"`
 }
 
 type repository struct {
@@ -100,11 +107,33 @@ func (r *repository) GetTotalSpentByProject(ctx context.Context, projectID strin
 
 func (r *repository) GetCategoryBreakdown(ctx context.Context, projectID string) ([]CategoryBreakdown, error) {
 	var breakdown []CategoryBreakdown
-	err := r.db.WithContext(ctx).
+	query := r.db.WithContext(ctx).
 		Model(&models.Expense{}).
-		Where("project_id = ? AND status = ?", projectID, models.ExpenseStatusApproved).
+		Where("status = ?", models.ExpenseStatusApproved)
+	if projectID != "" {
+		query = query.Where("project_id = ?", projectID)
+	}
+	err := query.
 		Select("category, COALESCE(SUM(amount), 0) as total").
 		Group("category").
+		Order("total DESC").
 		Scan(&breakdown).Error
 	return breakdown, err
+}
+
+func (r *repository) GetExpensesByMonth(ctx context.Context, projectID string) ([]MonthTotal, error) {
+	var results []MonthTotal
+	query := r.db.WithContext(ctx).
+		Model(&models.Expense{}).
+		Where("status = ?", models.ExpenseStatusApproved)
+	if projectID != "" {
+		query = query.Where("project_id = ?", projectID)
+	}
+	err := query.
+		Select("to_char(date, 'YYYY-MM') as month, COALESCE(SUM(amount), 0) as total").
+		Group("to_char(date, 'YYYY-MM')").
+		Order("month DESC").
+		Limit(12).
+		Scan(&results).Error
+	return results, err
 }
