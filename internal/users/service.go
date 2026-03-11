@@ -23,6 +23,7 @@ type Service interface {
 	UpdateUserRole(ctx context.Context, id string, role models.Role) (*models.User, error)
 	ResetUserPassword(ctx context.Context, id string, newPassword string) (*models.User, error)
 	UpdateProfile(ctx context.Context, id string, name, email, phone string) (*models.User, error)
+	UpdateProfileAvatar(ctx context.Context, userID, avatarPath string) (*models.User, error)
 	ChangeOwnPassword(ctx context.Context, id string, currentPassword, newPassword string) error
 	DeleteUser(ctx context.Context, id string, actorID string) error
 }
@@ -98,6 +99,14 @@ func (s *service) UpdateProfile(ctx context.Context, id string, name, email, pho
 		}
 	}
 	return s.repo.UpdateProfile(ctx, id, name, email, phone)
+}
+
+func (s *service) UpdateProfileAvatar(ctx context.Context, userID, avatarPath string) (*models.User, error) {
+	_, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, ErrUserNotFound
+	}
+	return s.repo.UpdateAvatarPath(ctx, userID, avatarPath)
 }
 
 func (s *service) ChangeOwnPassword(ctx context.Context, id string, currentPassword, newPassword string) error {

@@ -7,6 +7,7 @@ interface User {
     email: string;
     role: string;
     exp: number;
+    name?: string;
 }
 
 interface AuthContextType {
@@ -78,6 +79,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setUser(null);
         }
     }, [token]);
+
+    // When authenticated, fetch profile once to get name (and keep avatar via Avatar component + userId)
+    useEffect(() => {
+        if (!token || !isAuthReady) return;
+        let cancelled = false;
+        api.get<{ data?: { name?: string } }>('/profile')
+            .then((res) => {
+                if (cancelled) return;
+                const data = res.data?.data ?? (res.data as { name?: string } | undefined);
+                const name = data?.name;
+                if (name !== undefined) {
+                    setUser((prev) => (prev ? { ...prev, name } : null));
+                }
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [token, isAuthReady]);
 
     const login = (newToken: string) => {
         localStorage.setItem('token', newToken);

@@ -5,6 +5,7 @@ import 'driver.js/dist/driver.css'
 import api from '../utils/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
+import Avatar from '../components/Avatar'
 
 const ROLES = ['ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER', 'ACCOUNTANT', 'STORE_OFFICER'] as const
 
@@ -275,7 +276,7 @@ export default function Registry() {
                         <table className="data-table">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
+                                    <th>User</th>
                                     <th>Email</th>
                                     <th>Role</th>
                                     <th>Created</th>
@@ -297,7 +298,12 @@ export default function Registry() {
                                         const busy = rowLoadingId === u.id
                                         return (
                                         <tr key={u.id}>
-                                            <td style={{ fontWeight: 500 }}>{u.name}</td>
+                                            <td>
+                                                <div className="registry-user-cell">
+                                                    <Avatar userId={u.id} name={u.name} size="sm" />
+                                                    <span style={{ fontWeight: 500 }}>{u.name}</span>
+                                                </div>
+                                            </td>
                                             <td>{u.email}</td>
                                             <td>
                                                 <select

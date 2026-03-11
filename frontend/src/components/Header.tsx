@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { Search, User, LogOut } from 'lucide-react'
+import { Search, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import Avatar from './Avatar'
 
 export default function Header() {
     const { logout, user } = useAuth()
@@ -19,7 +20,7 @@ export default function Header() {
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
-    const displayName = user?.role === 'ADMIN' ? 'Admin' : (user?.email?.split('@')[0] || 'User')
+    const displayName = (user as { name?: string })?.name ?? (user?.role === 'ADMIN' ? 'Admin' : (user?.email?.split('@')[0] || 'User'))
 
     const handleLogout = () => {
         setDropdownOpen(false)
@@ -49,7 +50,7 @@ export default function Header() {
                         aria-expanded={dropdownOpen}
                         aria-haspopup="true"
                     >
-                        <User className="header-user-icon" size={20} />
+                        {user && <Avatar userId={user.id} name={displayName} email={user.email} size="sm" className="header-user-avatar" />}
                         <span>{displayName}</span>
                     </button>
                     {dropdownOpen && (
@@ -67,7 +68,6 @@ export default function Header() {
                                 className="header-user-menu-item"
                                 onClick={() => handleNav('/settings')}
                             >
-                                <User size={18} />
                                 View Profile
                             </button>
                             <div className="header-user-menu-divider" />

@@ -73,7 +73,6 @@ func main() {
 	authService := auth.NewService(userRepo, jwtSecret, 24*time.Hour)
 
 	// Initialize Handlers
-	userHandler := users.NewHandler(userService)
 	authHandler := auth.NewHandler(authService)
 	projectHandler := projects.NewHandler(projectService)
 	milestoneHandler := projects.NewMilestoneHandler(milestoneService)
@@ -84,6 +83,10 @@ func main() {
 	if err := os.MkdirAll(filepath.Join(uploadDir, "projects"), 0755); err != nil {
 		log.Printf("Warning: could not create upload dir: %v", err)
 	}
+	if err := os.MkdirAll(filepath.Join(uploadDir, "avatars"), 0755); err != nil {
+		log.Printf("Warning: could not create avatars dir: %v", err)
+	}
+	userHandler := users.NewHandler(userService, uploadDir)
 	photoHandler := projects.NewPhotoHandler(photoRepo, projectRepo, uploadDir)
 	attendanceHandler := attendance.NewHandler(attendanceService)
 	expenseHandler := expenses.NewHandler(expenseService)
@@ -116,6 +119,8 @@ func main() {
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
 		}
+		// Avatar images: public so <img src> can load without auth (same as many profile pic systems)
+		api.GET("/users/:id/avatar", userHandler.ServeUserAvatar)
 
 		// Protected routes
 		protected := api.Group("")
@@ -123,6 +128,7 @@ func main() {
 		{
 			protected.GET("/profile", userHandler.GetProfile)
 			protected.PATCH("/profile", userHandler.UpdateProfile)
+			protected.POST("/profile/avatar", userHandler.UploadProfileAvatar)
 			protected.POST("/profile/change-password", userHandler.ChangePassword)
 			protected.GET("/users/assignable", middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager), userHandler.ListAssignableUsers)
 			protected.GET("/users", middleware.RoleMiddleware(models.RoleAdmin), userHandler.ListUsers)

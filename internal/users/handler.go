@@ -2,7 +2,11 @@ package users
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"erp-project/internal/models"
 	"erp-project/pkg/utils"
@@ -10,12 +14,31 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	maxAvatarSize      = 2 << 20  // 2 MB
+	allowedAvatarTypes = ".jpg,.jpeg,.png,.gif,.webp"
+)
+
 type Handler struct {
-	service Service
+	service   Service
+	uploadDir string
 }
 
-func NewHandler(service Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service Service, uploadDir string) *Handler {
+	if uploadDir == "" {
+		uploadDir = "./uploads"
+	}
+	return &Handler{service: service, uploadDir: uploadDir}
+}
+
+func (h *Handler) allowedAvatarExt(name string) bool {
+	ext := strings.ToLower(filepath.Ext(name))
+	for _, e := range []string{".jpg", ".jpeg", ".png", ".gif", ".webp"} {
+		if ext == e {
+			return true
+		}
+	}
+	return false
 }
 
 // ListUsers returns all users (admin only). Query: role= to filter by role.
@@ -220,4 +243,86 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 	utils.SuccessResponse(c, http.StatusOK, "Password changed successfully", nil)
+}
+
+// UploadProfileAvatar handles POST /profile/avatar (multipart form field "file").
+func (h *Handler) UploadProfileAvatar(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	uid := userID.(string)
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "No file uploaded. Use form field 'file'.")
+		return
+	}
+	if file.Size > maxAvatarSize {
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("File too large. Max size is %d MB.", maxAvatarSize>>20))
+		return
+	}
+	if !h.allowedAvatarExt(file.Filename) {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid file type. Allowed: "+allowedAvatarTypes)
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext == ".jpeg" {
+		ext = ".jpg"
+	}
+	relPath := filepath.Join("avatars", uid+ext)
+	absPath := filepath.Join(h.uploadDir, relPath)
+	if err := os.MkdirAll(filepath.Dir(absPath), 0755); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to create upload directory")
+		return
+	}
+	if err := c.SaveUploadedFile(file, absPath); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to save file")
+		return
+	}
+
+	user, err := h.service.UpdateProfileAvatar(c.Request.Context(), uid, relPath)
+	if err != nil {
+		_ = os.Remove(absPath)
+		if errors.Is(err, ErrUserNotFound) {
+			utils.ErrorResponse(c, http.StatusNotFound, "User not found")
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to update profile avatar")
+		return
+	}
+
+	c.Header("Cache-Control", "private, max-age=86400")
+	utils.SuccessResponse(c, http.StatusOK, "Profile picture updated successfully", user)
+}
+
+// ServeUserAvatar serves the avatar image for a user. GET /users/:id/avatar
+func (h *Handler) ServeUserAvatar(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	user, err := h.service.GetUserByID(c.Request.Context(), id)
+	if err != nil || user.AvatarPath == "" {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	clean := filepath.Clean(user.AvatarPath)
+	if strings.Contains(clean, "..") || (!strings.HasPrefix(clean, "avatars/") && !strings.HasPrefix(clean, "avatars\\")) {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	absPath := filepath.Join(h.uploadDir, clean)
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	c.Header("Cache-Control", "private, max-age=86400")
+	c.File(absPath)
 }
