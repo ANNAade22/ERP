@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Eye, Package, Pencil, Plus, ShoppingCart, Trash2, X } from 'lucide-react'
+import { driver } from 'driver.js'
+import 'driver.js/dist/driver.css'
 import api from '../../utils/api'
 import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
@@ -252,6 +254,24 @@ export default function StockLevels() {
         }
     }
 
+    const startTour = () => {
+        const driverObj = driver({
+            showProgress: true,
+            steps: [
+                { element: '#inventory-stock-header', popover: { title: 'Inventory', description: 'Track material stock and manage procurement here. Use "Take tour" anytime to see these tips again. Click Close or press Escape to skip.' } },
+                { element: '#inventory-create-order-btn', popover: { title: 'Create Order', description: 'Convert an approved material request into a purchase order.' } },
+                { element: '#inventory-add-material-btn', popover: { title: 'Add Material', description: 'Add a new material to a project with name, unit, and minimum stock level.' } },
+                { element: '#inventory-stat-cards', popover: { title: 'Stock summary', description: 'Total materials across projects, low-stock count, and items above minimum.' } },
+                { element: '#inventory-materials-grid', popover: { title: 'Material cards', description: 'Each card shows stock level, min stock, and status. Use the icons to adjust stock or manage alerts.' } },
+                { element: '#inventory-recent-orders', popover: { title: 'Recent Orders', description: 'Track recent purchase orders and deliveries. Use the links to view or manage requests in Material Requests.' } },
+            ],
+            onDestroyed: () => {
+                try { localStorage.setItem('inventory-stock-tour-done', 'true'); } catch { /* ignore */ }
+            },
+        })
+        driverObj.drive()
+    }
+
     if (loading && materials.length === 0) {
         return (
             <div>
@@ -267,17 +287,20 @@ export default function StockLevels() {
 
     return (
         <div>
-            <div className="page-header">
+            <div id="inventory-stock-header" className="page-header">
                 <div className="page-header-info">
                     <h1>Inventory</h1>
                     <p>Track material stock and manage procurement</p>
                 </div>
                 <div className="page-header-actions">
-                    <button className="btn btn-secondary" onClick={openCreateOrderModal}>
+                    <button type="button" className="btn btn-secondary" onClick={startTour} title="Take a guided tour">
+                        Take tour
+                    </button>
+                    <button id="inventory-create-order-btn" type="button" className="btn btn-secondary" onClick={openCreateOrderModal}>
                         <ShoppingCart size={16} />
                         Create Order
                     </button>
-                    <button className="btn btn-primary" onClick={() => setShowAddMaterialModal(true)}>
+                    <button id="inventory-add-material-btn" type="button" className="btn btn-primary" onClick={() => setShowAddMaterialModal(true)}>
                         <Plus size={16} />
                         Add Material
                     </button>
@@ -289,7 +312,7 @@ export default function StockLevels() {
                 )}
             </div>
 
-            <div className="stat-cards" style={{ marginBottom: 'var(--space-6)' }}>
+            <div id="inventory-stat-cards" className="stat-cards" style={{ marginBottom: 'var(--space-6)' }}>
                 <div className="stat-card">
                     <div className="stat-card-header">
                         <span className="stat-card-title">Total materials</span>
@@ -318,7 +341,7 @@ export default function StockLevels() {
                 </div>
             </div>
 
-            <div className="cards-grid cols-2">
+            <div id="inventory-materials-grid" className="cards-grid cols-2">
                 {materials.length === 0 ? (
                     <div style={{ gridColumn: '1 / -1', padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                         No materials found. Add materials to projects to see stock levels.
@@ -376,7 +399,7 @@ export default function StockLevels() {
                 )}
             </div>
 
-            <div className="content-card" style={{ marginTop: 'var(--space-6)' }}>
+            <div id="inventory-recent-orders" className="content-card" style={{ marginTop: 'var(--space-6)' }}>
                 <div className="content-card-header">
                     <div>
                         <div className="content-card-title">Recent Orders</div>

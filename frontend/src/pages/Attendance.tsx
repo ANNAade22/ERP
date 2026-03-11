@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Users, Building2 } from 'lucide-react'
+import { driver } from 'driver.js'
+import 'driver.js/dist/driver.css'
 import api from '../utils/api'
 
 const POLL_INTERVAL_MS = 30_000
@@ -43,6 +45,19 @@ export default function Attendance() {
     const totalWorkers = summaries.reduce((acc, s) => acc + s.total_workers, 0)
     const overallRate = totalWorkers > 0 ? (totalPresent / totalWorkers) * 100 : 0
 
+    const startTour = () => {
+        const driverObj = driver({
+            showProgress: true,
+            steps: [
+                { element: '#attendance-header', popover: { title: 'Labor Attendance', description: "Today's attendance across all active sites. Use \"Take tour\" anytime to see these tips again. Click Close or press Escape to skip." } },
+                { element: '#attendance-stat-cards', popover: { title: 'Summary', description: 'Sites count, workers present today, and overall attendance rate. Data refreshes every 30 seconds.' } },
+                { element: '#attendance-by-site', popover: { title: "Today's attendance by site", description: 'Per-project breakdown of present vs total workers and attendance rate.' } },
+            ],
+            onDestroyed: () => { try { localStorage.setItem('attendance-tour-done', 'true') } catch { /* ignore */ } },
+        })
+        driverObj.drive()
+    }
+
     if (loading) {
         return (
             <div>
@@ -58,19 +73,22 @@ export default function Attendance() {
 
     return (
         <div>
-            <div className="page-header">
+            <div id="attendance-header" className="page-header">
                 <div className="page-header-info">
                     <h1>Labor Attendance</h1>
                     <p>Today’s attendance across all active sites. Data refreshes every 30 seconds.</p>
                 </div>
-                {lastUpdated && (
-                    <span style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
-                        Updated {lastUpdated.toLocaleTimeString()}
-                    </span>
-                )}
+                <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <button type="button" className="btn btn-secondary" onClick={startTour} title="Take a guided tour">Take tour</button>
+                    {lastUpdated && (
+                        <span style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
+                            Updated {lastUpdated.toLocaleTimeString()}
+                        </span>
+                    )}
+                </div>
             </div>
 
-            <div className="stat-cards" style={{ marginBottom: 'var(--space-6)' }}>
+            <div id="attendance-stat-cards" className="stat-cards" style={{ marginBottom: 'var(--space-6)' }}>
                 <div className="stat-card">
                     <div className="stat-card-header">
                         <span className="stat-card-title">Sites</span>
@@ -99,7 +117,7 @@ export default function Attendance() {
                 </div>
             </div>
 
-            <div className="content-card">
+            <div id="attendance-by-site" className="content-card">
                 <div className="content-card-header">
                     <div>
                         <div className="content-card-title">Today’s attendance by site</div>

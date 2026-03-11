@@ -59,13 +59,20 @@ type ProcurementSummary struct {
 	TotalPurchaseValue float64 `json:"total_purchase_value"`
 }
 
+type EquipmentSummary struct {
+	TotalEquipment   int64 `json:"total_equipment"`
+	Available        int64 `json:"available"`
+	UnderMaintenance int64 `json:"under_maintenance"`
+}
+
 type DashboardResponse struct {
-	Overview           OverviewStats            `json:"overview"`
-	ProjectSummaries   []ProjectSummary         `json:"project_summaries"`
-	AttendanceSummaries []AttendanceSummary      `json:"attendance_summaries"`
-	ExpenseBreakdown   []ExpenseCategorySummary  `json:"expense_breakdown"`
-	LowStockAlerts     []MaterialAlert          `json:"low_stock_alerts"`
-	Procurement        ProcurementSummary       `json:"procurement"`
+	Overview            OverviewStats            `json:"overview"`
+	ProjectSummaries    []ProjectSummary         `json:"project_summaries"`
+	AttendanceSummaries []AttendanceSummary     `json:"attendance_summaries"`
+	ExpenseBreakdown    []ExpenseCategorySummary `json:"expense_breakdown"`
+	LowStockAlerts      []MaterialAlert          `json:"low_stock_alerts"`
+	Procurement         ProcurementSummary      `json:"procurement"`
+	Equipment           EquipmentSummary        `json:"equipment"`
 }
 
 // --- Service ---
@@ -128,6 +135,13 @@ func (s *service) GetDashboard(ctx context.Context) (*DashboardResponse, error) 
 	}
 	dashboard.Procurement = *procurement
 
+	// 7. Equipment Summary
+	equipment, err := s.getEquipmentSummary(ctx)
+	if err != nil {
+		return nil, err
+	}
+	dashboard.Equipment = *equipment
+
 	return dashboard, nil
 }
 
@@ -157,6 +171,12 @@ func (s *service) GetProjectDashboard(ctx context.Context, projectID string) (*D
 		return nil, err
 	}
 	dashboard.LowStockAlerts = alerts
+
+	equipment, err := s.getEquipmentSummary(ctx)
+	if err != nil {
+		return nil, err
+	}
+	dashboard.Equipment = *equipment
 
 	return dashboard, nil
 }
@@ -320,6 +340,16 @@ func (s *service) getProcurementSummary(ctx context.Context) (*ProcurementSummar
 		Where("status IN ?", []string{string(models.PurchaseRequestApproved), string(models.PurchaseRequestOrdered), string(models.PurchaseRequestReceived)}).
 		Select("COALESCE(SUM(total_price), 0)").
 		Scan(&summary.TotalPurchaseValue)
+
+	return summary, nil
+}
+
+func (s *service) getEquipmentSummary(ctx context.Context) (*EquipmentSummary, error) {
+	summary := &EquipmentSummary{}
+
+	s.db.WithContext(ctx).Model(&models.Equipment{}).Count(&summary.TotalEquipment)
+	s.db.WithContext(ctx).Model(&models.Equipment{}).Where("status = ?", models.EquipmentStatusActive).Count(&summary.Available)
+	s.db.WithContext(ctx).Model(&models.Equipment{}).Where("status = ?", models.EquipmentStatusMaintenance).Count(&summary.UnderMaintenance)
 
 	return summary, nil
 }

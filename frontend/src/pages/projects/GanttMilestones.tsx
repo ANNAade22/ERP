@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Target, Calendar, CheckCircle2, ChevronRight, GripVertical, Pencil, Trash2, Loader2, RefreshCw, FolderPlus, ImagePlus, Camera, Search } from 'lucide-react';
+import { driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -441,6 +443,26 @@ export default function GanttMilestones() {
     }
   }
 
+  const startTour = () => {
+    const driverObj = driver({
+      showProgress: true,
+      steps: [
+        { element: '#gantt-page-header', popover: { title: 'Gantt Chart & Milestones', description: 'Track project milestones, timeline, and site photos here. Use "Take tour" anytime to see these tips again. Click Close or press Escape to skip.' } },
+        { element: '#gantt-back-link', popover: { title: 'Project Management', description: 'Return to the Projects list to create or edit projects.' } },
+        { element: '#gantt-project-select', popover: { title: 'Select project', description: 'Choose which project\'s milestones and Gantt chart to view. All data on this page is for the selected project.' } },
+        { element: '#gantt-add-milestone-btn', popover: { title: 'New Milestone', description: 'Add a milestone with title, dates, status, and progress. Completed projects are read-only.' } },
+        { element: '#gantt-stat-cards', popover: { title: 'Milestone summary', description: 'Quick counts: total milestones, completed, in progress, and pending for the selected project.' } },
+        { element: '#gantt-timeline-card', popover: { title: 'Timeline (Gantt)', description: 'Visual timeline of milestones with planned dates and progress bars. Search and filter milestones here.' } },
+        { element: '#gantt-milestones-table', popover: { title: 'All Milestones', description: 'Table view of every milestone. Edit or delete from the row actions (when the project is not completed).' } },
+        { element: '#gantt-site-photos', popover: { title: 'Site photos', description: 'Progress photos for this project. Site engineers can upload photos; filter by milestone. Press Escape to close any modal.' } },
+      ],
+      onDestroyed: () => {
+        try { localStorage.setItem('gantt-tour-done', 'true'); } catch { /* ignore */ }
+      },
+    });
+    driverObj.drive();
+  };
+
   if (loading) {
     return (
       <div className="page-header">
@@ -455,7 +477,7 @@ export default function GanttMilestones() {
 
   return (
     <div className="gantt-page">
-      <div className="page-header" style={{ flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+      <div id="gantt-page-header" className="page-header" style={{ flexWrap: 'wrap', gap: 'var(--space-4)' }}>
         <div style={{ flex: '1 1 280px' }}>
           <nav style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', marginBottom: 'var(--space-1)' }}>
             <Link to="/projects" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Projects</Link>
@@ -476,10 +498,14 @@ export default function GanttMilestones() {
           )}
         </div>
         <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-          <Link to="/projects" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <button type="button" className="btn btn-secondary" onClick={startTour} title="Take a guided tour">
+            Take tour
+          </button>
+          <Link id="gantt-back-link" to="/projects" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <FolderPlus size={16} /> Project Management
           </Link>
           <select
+            id="gantt-project-select"
             className="filter-select"
             value={selectedProject?.id ?? ''}
             onChange={(e) => {
@@ -503,7 +529,7 @@ export default function GanttMilestones() {
             ))}
           </select>
           {selectedProject && !projectCompleted && (
-            <button type="button" className="btn btn-primary" onClick={openCreate}>
+            <button id="gantt-add-milestone-btn" type="button" className="btn btn-primary" onClick={openCreate}>
               <Plus size={16} /> New Milestone
             </button>
           )}
@@ -560,7 +586,7 @@ export default function GanttMilestones() {
             </div>
           )}
           {/* Stats — DESIGN.md: stat-cards */}
-          <div className="stat-cards">
+          <div id="gantt-stat-cards" className="stat-cards">
             <div className="stat-card">
               <div className="stat-card-icon primary">
                 <Target size={20} />
@@ -606,7 +632,7 @@ export default function GanttMilestones() {
           </div>
 
           {/* Gantt (DESIGN.md: content-card) */}
-          <div className="content-card" style={{ marginBottom: 'var(--space-6)' }}>
+          <div id="gantt-timeline-card" className="content-card" style={{ marginBottom: 'var(--space-6)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
               <h2 style={{ margin: 0 }}>Timeline — {selectedProject.name}</h2>
               <span style={{ fontSize: 'var(--font-sm)', color: 'var(--text-secondary)' }}>
@@ -736,7 +762,7 @@ export default function GanttMilestones() {
           </div>
 
           {/* List — DESIGN.md: content-card, data-table */}
-          <div className="content-card">
+          <div id="gantt-milestones-table" className="content-card">
             <h2 style={{ marginBottom: 'var(--space-4)' }}>All Milestones</h2>
             {loadingMilestones ? (
               <div className="data-table-wrapper">
@@ -814,7 +840,7 @@ export default function GanttMilestones() {
           </div>
 
           {/* Site photos / Progress photos — upload by Site Engineer, view by all */}
-          <div className="content-card" style={{ marginTop: 'var(--space-6)' }}>
+          <div id="gantt-site-photos" className="content-card" style={{ marginTop: 'var(--space-6)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
               <div>
                 <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>

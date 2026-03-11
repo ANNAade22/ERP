@@ -9,6 +9,7 @@ import (
 	"erp-project/internal/attendance"
 	"erp-project/internal/auth"
 	"erp-project/internal/dashboard"
+	"erp-project/internal/equipment"
 	"erp-project/internal/expenses"
 	"erp-project/internal/finance"
 	"erp-project/internal/inventory"
@@ -54,6 +55,7 @@ func main() {
 	expenseRepo := expenses.NewRepository(db)
 	procurementRepo := procurement.NewRepository(db)
 	inventoryRepo := inventory.NewRepository(db)
+	equipmentRepo := equipment.NewRepository(db)
 
 	// Initialize Services
 	userService := users.NewService(userRepo)
@@ -63,6 +65,7 @@ func main() {
 	expenseService := expenses.NewService(expenseRepo, projectRepo, db)
 	procurementService := procurement.NewService(procurementRepo)
 	inventoryService := inventory.NewService(inventoryRepo)
+	equipmentService := equipment.NewService(equipmentRepo, projectRepo, userRepo)
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		jwtSecret = "super-secret-key" // Fallback for MVP
@@ -88,6 +91,7 @@ func main() {
 	inventoryHandler := inventory.NewHandler(inventoryService)
 	dashboardService := dashboard.NewService(db)
 	dashboardHandler := dashboard.NewHandler(dashboardService)
+	equipmentHandler := equipment.NewHandler(equipmentService)
 	financeService := finance.NewService(db)
 	financeHandler := finance.NewHandler(financeService)
 
@@ -118,6 +122,9 @@ func main() {
 		protected.Use(middleware.AuthMiddleware(jwtSecret))
 		{
 			protected.GET("/profile", userHandler.GetProfile)
+			protected.PATCH("/profile", userHandler.UpdateProfile)
+			protected.POST("/profile/change-password", userHandler.ChangePassword)
+			protected.GET("/users/assignable", middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager), userHandler.ListAssignableUsers)
 			protected.GET("/users", middleware.RoleMiddleware(models.RoleAdmin), userHandler.ListUsers)
 			protected.PATCH("/users/:id/role", middleware.RoleMiddleware(models.RoleAdmin), userHandler.UpdateUserRole)
 			protected.PATCH("/users/:id/password", middleware.RoleMiddleware(models.RoleAdmin), userHandler.ResetUserPassword)
@@ -226,6 +233,26 @@ func main() {
 				milestoneGroup.PUT("/:id", middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager), milestoneHandler.UpdateMilestone)
 				milestoneGroup.DELETE("/:id", middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager), milestoneHandler.DeleteMilestone)
 			}
+
+			// Equipment — specific routes before /:id
+			equipmentGroup := protected.Group("/equipment")
+			equipmentRole := middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager)
+			{
+				equipmentGroup.GET("/dashboard", equipmentHandler.GetDashboard)
+				equipmentGroup.GET("/scheduled", equipmentHandler.ListScheduled)
+				equipmentGroup.POST("/scheduled", equipmentRole, equipmentHandler.CreateSchedule)
+				equipmentGroup.PUT("/scheduled/:id", equipmentRole, equipmentHandler.UpdateSchedule)
+				equipmentGroup.DELETE("/scheduled/:id", equipmentRole, equipmentHandler.DeleteSchedule)
+				equipmentGroup.GET("", equipmentHandler.ListEquipment)
+				equipmentGroup.POST("", equipmentRole, equipmentHandler.CreateEquipment)
+				equipmentGroup.GET("/:id", equipmentHandler.GetEquipment)
+				equipmentGroup.PUT("/:id", equipmentRole, equipmentHandler.UpdateEquipment)
+				equipmentGroup.DELETE("/:id", equipmentRole, equipmentHandler.DeleteEquipment)
+				equipmentGroup.GET("/:id/maintenance", equipmentHandler.ListMaintenance)
+				equipmentGroup.POST("/:id/maintenance", equipmentRole, equipmentHandler.CreateMaintenance)
+			}
+			protected.PATCH("/maintenance/:id", equipmentRole, equipmentHandler.UpdateMaintenance)
+			protected.DELETE("/maintenance/:id", equipmentRole, equipmentHandler.DeleteMaintenance)
 		}
 	}
 

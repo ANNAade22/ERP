@@ -1,5 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { KeyRound, Save, Trash2, UserPlus, X } from 'lucide-react'
+import { driver } from 'driver.js'
+import 'driver.js/dist/driver.css'
 import api from '../utils/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
@@ -190,26 +192,49 @@ export default function Registry() {
         )
     }, [search, users])
 
+    const startTour = () => {
+        const steps: { element: string; popover: { title: string; description: string } }[] = [
+            { element: '#registry-header', popover: { title: 'User Registry', description: 'View and manage all users and their roles. Only admins can add users or change roles. Use "Take tour" anytime to see these tips again. Click Close or press Escape to skip.' } },
+            { element: '#registry-add-area', popover: { title: 'Add user', description: isAdmin ? 'Register a new user with name, email, password, and role. Click to open the form.' : 'Only admins see the Add user button here. You can still view and search the user list.' } },
+            { element: '#registry-filters', popover: { title: 'Search and filter', description: 'Search by name, email, or role. Use "Filter by role" to show only one role (e.g. SITE_ENGINEER or ADMIN).' } },
+            { element: '#registry-table-card', popover: { title: 'Users list', description: 'All registered users. Each row shows name, email, role, and creation date.' } },
+            { element: '#registry-table-actions-hint', popover: { title: 'Managing users', description: 'Role: change a user\'s role from the dropdown, then click Save. Reset password: set a new password for a user. Delete: remove the user (use with care). Only admins can edit; you cannot change your own role. Press Escape to close any modal.' } },
+        ]
+        const driverObj = driver({
+            showProgress: true,
+            steps,
+            onDestroyed: () => { try { localStorage.setItem('registry-tour-done', 'true') } catch { /* ignore */ } },
+        })
+        driverObj.drive()
+    }
+
     return (
         <div>
-            <div className="page-header">
+            <div id="registry-header" className="page-header">
                 <div className="page-header-info">
                     <h1>User Registry</h1>
                     <p>View and manage users by role. Only admins can access this page.</p>
                 </div>
-                {isAdmin && (
-                    <button
-                        type="button"
-                        className="btn btn-primary"
-                        onClick={() => setShowAddModal(true)}
-                    >
-                        <UserPlus size={18} />
-                        Add user
-                    </button>
-                )}
+                <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <button type="button" className="btn btn-secondary" onClick={startTour} title="Take a guided tour">Take tour</button>
+                    <div id="registry-add-area" style={{ display: 'inline-flex' }}>
+                        {isAdmin ? (
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={() => setShowAddModal(true)}
+                            >
+                                <UserPlus size={18} />
+                                Add user
+                            </button>
+                        ) : (
+                            <span style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)', alignSelf: 'center' }}>Add user (Admin only)</span>
+                        )}
+                    </div>
+                </div>
             </div>
 
-            <div className="filter-row" style={{ marginBottom: 'var(--space-4)' }}>
+            <div id="registry-filters" className="filter-row" style={{ marginBottom: 'var(--space-4)' }}>
                 <input
                     className="filter-input"
                     type="text"
@@ -232,7 +257,7 @@ export default function Registry() {
                 </label>
             </div>
 
-            <div className="content-card">
+            <div id="registry-table-card" className="content-card">
                 <div className="content-card-header">
                     <div>
                         <div className="content-card-title">Users</div>
@@ -246,7 +271,7 @@ export default function Registry() {
                         Loading…
                     </div>
                 ) : (
-                    <div className="data-table-wrapper">
+                    <div id="registry-table-actions-hint" className="data-table-wrapper">
                         <table className="data-table">
                             <thead>
                                 <tr>

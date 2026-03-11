@@ -6,6 +6,8 @@ import {
     Pencil,
     Trash2,
 } from 'lucide-react'
+import { driver } from 'driver.js'
+import 'driver.js/dist/driver.css'
 
 const vendors = [
     {
@@ -41,21 +43,35 @@ const vendors = [
 ]
 
 export default function ManageContractors() {
+    const startTour = () => {
+        const driverObj = driver({
+            showProgress: true,
+            steps: [
+                { element: '#vendors-header', popover: { title: 'Vendors', description: 'Manage suppliers, contractors, and service providers. Use "Take tour" anytime to see these tips again. Click Close or press Escape to skip.' } },
+                { element: '#vendors-add-btn', popover: { title: 'Add Vendor', description: 'Add a new vendor or contractor to the system.' } },
+                { element: '#vendors-cards', popover: { title: 'Vendor cards', description: 'Each card shows contact info, projects, total value, and reliability. Use the icons to edit or remove a vendor.' } },
+            ],
+            onDestroyed: () => { try { localStorage.setItem('vendors-tour-done', 'true') } catch { /* ignore */ } },
+        })
+        driverObj.drive()
+    }
+
     return (
         <div>
             {/* Page Header */}
-            <div className="page-header">
+            <div id="vendors-header" className="page-header">
                 <div className="page-header-info">
                     <h1>Vendors</h1>
                     <p>Manage suppliers, contractors, and service providers</p>
                 </div>
                 <div className="page-header-actions">
-                    <button className="btn btn-primary">+ Add Vendor</button>
+                    <button type="button" className="btn btn-secondary" onClick={startTour} title="Take a guided tour">Take tour</button>
+                    <button id="vendors-add-btn" type="button" className="btn btn-primary">+ Add Vendor</button>
                 </div>
             </div>
 
             {/* Vendor Cards */}
-            <div className="cards-grid cols-2">
+            <div id="vendors-cards" className="cards-grid cols-2">
                 {vendors.map((vendor, i) => (
                     <div className="vendor-card" key={i}>
                         <div className="vendor-card-header">

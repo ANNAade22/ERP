@@ -20,6 +20,7 @@ type User struct {
 	ID           string         `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
 	Name         string         `gorm:"type:varchar(255);not null" json:"name"`
 	Email        string         `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`
+	Phone        string         `gorm:"type:varchar(50)" json:"phone"`
 	PasswordHash string         `gorm:"type:varchar(255);not null" json:"-"`
 	Role         Role           `gorm:"type:varchar(50);not null" json:"role"`
 	CreatedAt    time.Time      `json:"created_at"`

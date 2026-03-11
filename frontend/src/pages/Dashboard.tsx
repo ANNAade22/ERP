@@ -10,9 +10,12 @@ import {
     ArrowRight,
     ClipboardList,
     Truck,
+    Wrench,
 } from 'lucide-react'
 import api from '../utils/api'
 import { useAuth } from '../context/AuthContext'
+import { driver } from 'driver.js'
+import 'driver.js/dist/driver.css'
 
 interface DashboardData {
     overview: {
@@ -53,6 +56,11 @@ interface DashboardData {
         approved_requests: number
         total_purchase_value: number
     }
+    equipment?: {
+        total_equipment: number
+        available: number
+        under_maintenance: number
+    }
     expense_breakdown?: { category: string; total: number }[]
 }
 
@@ -65,6 +73,7 @@ type StatItem = {
     subtitleType: string
     icon: React.ReactNode
     to?: string
+    id?: string
 }
 
 function StatCard({ stat }: { stat: StatItem }) {
@@ -78,36 +87,39 @@ function StatCard({ stat }: { stat: StatItem }) {
             <div className={`stat-card-subtitle ${stat.subtitleType}`}>{stat.subtitle}</div>
         </>
     )
+    const commonProps = { id: stat.id, className: 'stat-card', style: stat.to ? { textDecoration: 'none', color: 'inherit' } : undefined }
     if (stat.to) {
         return (
-            <Link to={stat.to} className="stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Link to={stat.to} {...commonProps}>
                 {content}
             </Link>
         )
     }
-    return <div className="stat-card">{content}</div>
+    return <div {...commonProps}>{content}</div>
 }
 
 // --- Admin: full overview
 function AdminDashboard({ data }: { data: DashboardData }) {
-    const { overview, project_summaries, attendance_summaries, low_stock_alerts, procurement } = data
+    const { overview, project_summaries, attendance_summaries, low_stock_alerts, procurement, equipment } = data
     const avgAttendance =
         attendance_summaries.length > 0
             ? attendance_summaries.reduce((acc, curr) => acc + curr.attendance_rate, 0) / attendance_summaries.length
             : 0
 
+    const equipmentSubtitle = equipment ? `${equipment.available} available, ${equipment.under_maintenance} in maintenance` : 'Fleet overview'
     const stats = [
-        { title: 'Active Projects', value: overview.active_projects.toString(), subtitle: `${overview.total_projects} total projects`, subtitleType: 'info' as const, icon: <Building2 size={20} />, to: '/projects' },
-        { title: 'Budget Utilization', value: `${overview.budget_utilization.toFixed(1)}%`, subtitle: `$${overview.total_spent.toLocaleString()} / $${overview.total_budget.toLocaleString()}`, subtitleType: overview.budget_utilization > 90 ? 'negative' : 'positive', icon: <DollarSign size={20} />, to: '/finance/budget-tracker' },
-        { title: 'Procurement Requests', value: procurement.pending_requests.toString(), subtitle: `${procurement.approved_requests} approved`, subtitleType: procurement.pending_requests > 5 ? 'warning' : 'neutral', icon: <TrendingUp size={20} />, to: '/inventory/material-requests' },
-        { title: 'Labor Attendance', value: `${avgAttendance.toFixed(1)}%`, subtitle: 'Today across all sites', subtitleType: avgAttendance > 90 ? 'positive' : 'warning', icon: <Users size={20} />, to: '/attendance' },
-        { title: 'Material Stock', value: low_stock_alerts.length.toString(), subtitle: 'Items low in stock', subtitleType: low_stock_alerts.length > 0 ? 'negative' : 'positive', icon: <Package size={20} />, to: '/inventory/stock-levels' },
-        { title: 'Total Expenses', value: `$${overview.total_spent.toLocaleString()}`, subtitle: 'All time', subtitleType: 'info' as const, icon: <AlertTriangle size={20} />, to: '/finance/budget-tracker' },
+        { title: 'Active Projects', value: overview.active_projects.toString(), subtitle: `${overview.total_projects} total projects`, subtitleType: 'info' as const, icon: <Building2 size={20} />, to: '/projects', id: 'dashboard-stat-active-projects' },
+        { title: 'Budget Utilization', value: `${overview.budget_utilization.toFixed(1)}%`, subtitle: `$${overview.total_spent.toLocaleString()} / $${overview.total_budget.toLocaleString()}`, subtitleType: overview.budget_utilization > 90 ? 'negative' : 'positive', icon: <DollarSign size={20} />, to: '/finance/budget-tracker', id: 'dashboard-stat-budget-utilization' },
+        { title: 'Equipment', value: equipment ? equipment.total_equipment.toString() : '0', subtitle: equipmentSubtitle, subtitleType: 'info' as const, icon: <Wrench size={20} />, to: '/equipment', id: 'dashboard-stat-equipment' },
+        { title: 'Procurement Requests', value: procurement.pending_requests.toString(), subtitle: `${procurement.approved_requests} approved`, subtitleType: procurement.pending_requests > 5 ? 'warning' : 'neutral', icon: <TrendingUp size={20} />, to: '/inventory/material-requests', id: 'dashboard-stat-procurement' },
+        { title: 'Labor Attendance', value: `${avgAttendance.toFixed(1)}%`, subtitle: 'Today across all sites', subtitleType: avgAttendance > 90 ? 'positive' : 'warning', icon: <Users size={20} />, to: '/attendance', id: 'dashboard-stat-attendance' },
+        { title: 'Material Stock', value: low_stock_alerts.length.toString(), subtitle: 'Items low in stock', subtitleType: low_stock_alerts.length > 0 ? 'negative' : 'positive', icon: <Package size={20} />, to: '/inventory/stock-levels', id: 'dashboard-stat-material-stock' },
+        { title: 'Total Expenses', value: `$${overview.total_spent.toLocaleString()}`, subtitle: 'All time', subtitleType: 'info' as const, icon: <AlertTriangle size={20} />, to: '/finance/budget-tracker', id: 'dashboard-stat-total-expenses' },
     ]
 
     return (
         <>
-            <div className="stat-cards">
+            <div id="dashboard-stat-cards" className="stat-cards">
                 {stats.map((stat) => (
                     <StatCard key={stat.title} stat={stat} />
                 ))}
@@ -119,22 +131,24 @@ function AdminDashboard({ data }: { data: DashboardData }) {
 
 // --- Project Manager: projects, budget, procurement, attendance
 function ProjectManagerDashboard({ data }: { data: DashboardData }) {
-    const { overview, project_summaries, attendance_summaries, procurement } = data
+    const { overview, project_summaries, attendance_summaries, procurement, equipment } = data
     const avgAttendance =
         attendance_summaries.length > 0
             ? attendance_summaries.reduce((acc, curr) => acc + curr.attendance_rate, 0) / attendance_summaries.length
             : 0
 
+    const equipmentSubtitle = equipment ? `${equipment.available} available` : 'Fleet'
     const stats: StatItem[] = [
-        { title: 'Active Projects', value: overview.active_projects.toString(), subtitle: `${overview.total_projects} total`, subtitleType: 'info', icon: <Building2 size={20} />, to: '/projects' },
-        { title: 'Budget Utilization', value: `${overview.budget_utilization.toFixed(1)}%`, subtitle: `$${overview.total_spent.toLocaleString()} spent`, subtitleType: overview.budget_utilization > 90 ? 'negative' : 'positive', icon: <DollarSign size={20} />, to: '/finance/budget-tracker' },
-        { title: 'Pending Approvals', value: procurement.pending_requests.toString(), subtitle: 'Procurement requests', subtitleType: procurement.pending_requests > 5 ? 'warning' : 'neutral', icon: <TrendingUp size={20} />, to: '/inventory/material-requests' },
-        { title: 'Site Attendance', value: `${avgAttendance.toFixed(1)}%`, subtitle: 'Today', subtitleType: avgAttendance > 90 ? 'positive' : 'warning', icon: <Users size={20} />, to: '/attendance' },
+        { title: 'Active Projects', value: overview.active_projects.toString(), subtitle: `${overview.total_projects} total`, subtitleType: 'info', icon: <Building2 size={20} />, to: '/projects', id: 'dashboard-stat-active-projects' },
+        { title: 'Budget Utilization', value: `${overview.budget_utilization.toFixed(1)}%`, subtitle: `$${overview.total_spent.toLocaleString()} spent`, subtitleType: overview.budget_utilization > 90 ? 'negative' : 'positive', icon: <DollarSign size={20} />, to: '/finance/budget-tracker', id: 'dashboard-stat-budget-utilization' },
+        { title: 'Equipment', value: equipment ? equipment.total_equipment.toString() : '0', subtitle: equipmentSubtitle, subtitleType: 'info', icon: <Wrench size={20} />, to: '/equipment', id: 'dashboard-stat-equipment' },
+        { title: 'Pending Approvals', value: procurement.pending_requests.toString(), subtitle: 'Procurement requests', subtitleType: procurement.pending_requests > 5 ? 'warning' : 'neutral', icon: <TrendingUp size={20} />, to: '/inventory/material-requests', id: 'dashboard-stat-pending-approvals' },
+        { title: 'Site Attendance', value: `${avgAttendance.toFixed(1)}%`, subtitle: 'Today', subtitleType: avgAttendance > 90 ? 'positive' : 'warning', icon: <Users size={20} />, to: '/attendance', id: 'dashboard-stat-site-attendance' },
     ]
 
     return (
         <>
-            <div className="stat-cards">
+            <div id="dashboard-stat-cards" className="stat-cards">
                 {stats.map((stat) => (
                     <StatCard key={stat.title} stat={stat} />
                 ))}
@@ -149,14 +163,14 @@ function SiteEngineerDashboard({ data }: { data: DashboardData }) {
     const { project_summaries, attendance_summaries, procurement } = data
 
     const stats: StatItem[] = [
-        { title: 'My Projects', value: project_summaries.filter((p) => p.status === 'IN_PROGRESS').length.toString(), subtitle: 'Active sites', subtitleType: 'info', icon: <Building2 size={20} />, to: '/projects' },
-        { title: "Today's Attendance", value: attendance_summaries.reduce((acc, a) => acc + a.present_today, 0).toString(), subtitle: 'Workers present', subtitleType: 'info', icon: <Users size={20} />, to: '/attendance' },
-        { title: 'My Requests', value: procurement.pending_requests.toString(), subtitle: 'Pending procurement', subtitleType: 'info', icon: <ClipboardList size={20} />, to: '/inventory/material-requests' },
+        { title: 'My Projects', value: project_summaries.filter((p) => p.status === 'IN_PROGRESS').length.toString(), subtitle: 'Active sites', subtitleType: 'info', icon: <Building2 size={20} />, to: '/projects', id: 'dashboard-stat-my-projects' },
+        { title: "Today's Attendance", value: attendance_summaries.reduce((acc, a) => acc + a.present_today, 0).toString(), subtitle: 'Workers present', subtitleType: 'info', icon: <Users size={20} />, to: '/attendance', id: 'dashboard-stat-todays-attendance' },
+        { title: 'My Requests', value: procurement.pending_requests.toString(), subtitle: 'Pending procurement', subtitleType: 'info', icon: <ClipboardList size={20} />, to: '/inventory/material-requests', id: 'dashboard-stat-my-requests' },
     ]
 
     return (
         <>
-            <div className="stat-cards">
+            <div id="dashboard-stat-cards" className="stat-cards">
                 {stats.map((stat) => (
                     <StatCard key={stat.title} stat={stat} />
                 ))}
@@ -213,14 +227,14 @@ function AccountantDashboard({ data }: { data: DashboardData }) {
     const { overview, project_summaries, expense_breakdown = [] } = data
 
     const stats: StatItem[] = [
-        { title: 'Total Spent', value: `$${overview.total_spent.toLocaleString()}`, subtitle: 'All projects', subtitleType: 'info', icon: <DollarSign size={20} />, to: '/finance/budget-tracker' },
-        { title: 'Budget utilization', value: `${overview.budget_utilization.toFixed(1)}%`, subtitle: `$${overview.total_budget.toLocaleString()} total budget`, subtitleType: 'info', icon: <TrendingUp size={20} />, to: '/finance/budget-tracker' },
-        { title: 'Remaining', value: `$${overview.budget_remaining.toLocaleString()}`, subtitle: `Across ${overview.total_projects} projects`, subtitleType: 'info', icon: <DollarSign size={20} />, to: '/finance/budget-tracker' },
+        { title: 'Total Spent', value: `$${overview.total_spent.toLocaleString()}`, subtitle: 'All projects', subtitleType: 'info', icon: <DollarSign size={20} />, to: '/finance/budget-tracker', id: 'dashboard-stat-total-spent' },
+        { title: 'Budget utilization', value: `${overview.budget_utilization.toFixed(1)}%`, subtitle: `$${overview.total_budget.toLocaleString()} total budget`, subtitleType: 'info', icon: <TrendingUp size={20} />, to: '/finance/budget-tracker', id: 'dashboard-stat-budget-utilization' },
+        { title: 'Remaining', value: `$${overview.budget_remaining.toLocaleString()}`, subtitle: `Across ${overview.total_projects} projects`, subtitleType: 'info', icon: <DollarSign size={20} />, to: '/finance/budget-tracker', id: 'dashboard-stat-remaining' },
     ]
 
     return (
         <>
-            <div className="stat-cards">
+            <div id="dashboard-stat-cards" className="stat-cards">
                 {stats.map((stat) => (
                     <StatCard key={stat.title} stat={stat} />
                 ))}
@@ -258,14 +272,14 @@ function StoreOfficerDashboard({ data }: { data: DashboardData }) {
     const { low_stock_alerts, procurement } = data
 
     const stats: StatItem[] = [
-        { title: 'Low stock items', value: low_stock_alerts.length.toString(), subtitle: 'Need restock', subtitleType: low_stock_alerts.length > 0 ? 'negative' : 'positive', icon: <Package size={20} />, to: '/inventory/stock-levels' },
-        { title: 'Pending requests', value: procurement.pending_requests.toString(), subtitle: 'To process', subtitleType: 'info', icon: <ClipboardList size={20} />, to: '/inventory/material-requests' },
-        { title: 'Purchase value', value: `$${procurement.total_purchase_value.toLocaleString()}`, subtitle: 'Approved / ordered', subtitleType: 'info', icon: <DollarSign size={20} />, to: '/inventory/material-requests' },
+        { title: 'Low stock items', value: low_stock_alerts.length.toString(), subtitle: 'Need restock', subtitleType: low_stock_alerts.length > 0 ? 'negative' : 'positive', icon: <Package size={20} />, to: '/inventory/stock-levels', id: 'dashboard-stat-low-stock' },
+        { title: 'Pending requests', value: procurement.pending_requests.toString(), subtitle: 'To process', subtitleType: 'info', icon: <ClipboardList size={20} />, to: '/inventory/material-requests', id: 'dashboard-stat-pending-requests' },
+        { title: 'Purchase value', value: `$${procurement.total_purchase_value.toLocaleString()}`, subtitle: 'Approved / ordered', subtitleType: 'info', icon: <DollarSign size={20} />, to: '/inventory/material-requests', id: 'dashboard-stat-purchase-value' },
     ]
 
     return (
         <>
-            <div className="stat-cards">
+            <div id="dashboard-stat-cards" className="stat-cards">
                 {stats.map((stat) => (
                     <StatCard key={stat.title} stat={stat} />
                 ))}
@@ -409,6 +423,35 @@ const ROLE_DASHBOARD_CONFIG: Record<Role, { title: string; subtitle: string }> =
     },
 }
 
+// --- Tour: which stat card IDs each role has (in order), and step content per card
+const ROLE_STAT_IDS: Record<Role, string[]> = {
+    ADMIN: ['active-projects', 'budget-utilization', 'equipment', 'procurement', 'attendance', 'material-stock', 'total-expenses'],
+    PROJECT_MANAGER: ['active-projects', 'budget-utilization', 'equipment', 'pending-approvals', 'site-attendance'],
+    SITE_ENGINEER: ['my-projects', 'todays-attendance', 'my-requests'],
+    ACCOUNTANT: ['total-spent', 'budget-utilization', 'remaining'],
+    STORE_OFFICER: ['low-stock', 'pending-requests', 'purchase-value'],
+}
+
+const DASHBOARD_STAT_STEPS: Record<string, { title: string; description: string }> = {
+    'active-projects': { title: 'Active Projects', description: 'Number of projects in progress and total projects. Click to open the Projects page.' },
+    'budget-utilization': { title: 'Budget Utilization', description: 'How much of the total budget has been spent. Click to open the Budget vs Actual Tracker.' },
+    'equipment': { title: 'Equipment', description: 'Total fleet size, available units, and those under maintenance. Click to manage equipment and schedules.' },
+    'procurement': { title: 'Procurement Requests', description: 'Pending and approved material requests. Click to open Material Requests.' },
+    'attendance': { title: 'Labor Attendance', description: 'Today’s attendance rate across all sites. Click to open Attendance.' },
+    'material-stock': { title: 'Material Stock', description: 'Items at or below minimum stock. Click to open Stock Levels.' },
+    'total-expenses': { title: 'Total Expenses', description: 'All-time spent across projects. Click to open the Budget Tracker.' },
+    'pending-approvals': { title: 'Pending Approvals', description: 'Procurement requests awaiting your approval. Click to open Material Requests.' },
+    'site-attendance': { title: 'Site Attendance', description: 'Today’s attendance across your sites. Click to open Attendance.' },
+    'my-projects': { title: 'My Projects', description: 'Your active sites. Click to open the Projects list.' },
+    'todays-attendance': { title: "Today's Attendance", description: 'Workers present today. Click to open Attendance.' },
+    'my-requests': { title: 'My Requests', description: 'Your pending material requests. Click to open Material Requests.' },
+    'total-spent': { title: 'Total Spent', description: 'Total spending across all projects. Click to open the Budget Tracker.' },
+    'remaining': { title: 'Remaining', description: 'Budget left across projects. Click to open the Budget Tracker.' },
+    'low-stock': { title: 'Low Stock Items', description: 'Materials that need restock. Click to open Stock Levels.' },
+    'pending-requests': { title: 'Pending Requests', description: 'Material requests to process. Click to open Material Requests.' },
+    'purchase-value': { title: 'Purchase Value', description: 'Value of approved or ordered requests. Click to open Material Requests.' },
+}
+
 // Safe defaults so we never crash on missing API fields
 const DEFAULT_OVERVIEW = {
     total_projects: 0,
@@ -428,6 +471,7 @@ function normalizeDashboardData(raw: unknown): DashboardData {
         attendance_summaries: Array.isArray(d.attendance_summaries) ? d.attendance_summaries as DashboardData['attendance_summaries'] : [],
         low_stock_alerts: Array.isArray(d.low_stock_alerts) ? d.low_stock_alerts as DashboardData['low_stock_alerts'] : [],
         procurement: (d.procurement && typeof d.procurement === 'object' ? d.procurement : {}) as DashboardData['procurement'],
+        equipment: (d.equipment && typeof d.equipment === 'object' ? d.equipment : undefined) as DashboardData['equipment'],
         expense_breakdown: Array.isArray(d.expense_breakdown) ? d.expense_breakdown as DashboardData['expense_breakdown'] : undefined,
     }
 }
@@ -531,23 +575,65 @@ export default function Dashboard() {
     const role = (user?.role ?? 'ADMIN') as Role
     const config = ROLE_DASHBOARD_CONFIG[role] ?? ROLE_DASHBOARD_CONFIG.ADMIN
 
+    const startDashboardTour = () => {
+        const steps: { element: string; popover: { title: string; description: string } }[] = [
+            { element: '#dashboard-header', popover: { title: config.title, description: `${config.subtitle} Use "Take tour" anytime to see these tips again. Click Close or press Escape to skip.` } },
+        ]
+        const statIds = ROLE_STAT_IDS[role] ?? ROLE_STAT_IDS.ADMIN
+        statIds.forEach((id) => {
+            const stepContent = DASHBOARD_STAT_STEPS[id]
+            if (stepContent) {
+                steps.push({
+                    element: `#dashboard-stat-${id}`,
+                    popover: { title: stepContent.title, description: stepContent.description },
+                })
+            }
+        })
+        steps.push({ element: '#dashboard-content', popover: { title: 'Your overview', description: 'Below: projects overview, quick actions, or links depending on your role. Use the buttons to open the full pages. Press Escape to close any modal.' } })
+        const driverObj = driver({
+            showProgress: true,
+            steps,
+            onDestroyed: () => {
+                try { localStorage.setItem('dashboard-tour-done', 'true') } catch { /* ignore */ }
+            },
+        })
+        driverObj.drive()
+    }
+
+    const showFirstTimeHint = typeof window !== 'undefined' && !localStorage.getItem('dashboard-tour-done')
+
     return (
         <div>
-            <div className="page-header">
+            <div id="dashboard-header" className="page-header">
                 <div className="page-header-info">
                     <h1>{config.title}</h1>
                     <p>{config.subtitle}</p>
+                    {showFirstTimeHint && (
+                        <p style={{ marginTop: 'var(--space-2)', fontSize: 'var(--font-sm)' }}>
+                            New here?{' '}
+                            <button type="button" className="btn btn-secondary" style={{ padding: 'var(--space-1) var(--space-3)', fontSize: 'inherit' }} onClick={startDashboardTour}>
+                                Take a tour
+                            </button>
+                        </p>
+                    )}
+                </div>
+                <div className="page-header-actions">
+                    <button type="button" className="btn btn-secondary" onClick={startDashboardTour}>
+                        Take tour
+                    </button>
                 </div>
             </div>
 
-            {role === 'ADMIN' && <AdminDashboard data={data} />}
-            {role === 'PROJECT_MANAGER' && <ProjectManagerDashboard data={data} />}
-            {role === 'SITE_ENGINEER' && <SiteEngineerDashboard data={data} />}
-            {role === 'ACCOUNTANT' && <AccountantDashboard data={data} />}
-            {role === 'STORE_OFFICER' && <StoreOfficerDashboard data={data} />}
-            {!['ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER', 'ACCOUNTANT', 'STORE_OFFICER'].includes(role) && (
-                <AdminDashboard data={data} />
-            )}
+            <div id="dashboard-content">
+                {role === 'ADMIN' && <AdminDashboard data={data} />}
+                {role === 'PROJECT_MANAGER' && <ProjectManagerDashboard data={data} />}
+                {role === 'SITE_ENGINEER' && <SiteEngineerDashboard data={data} />}
+                {role === 'ACCOUNTANT' && <AccountantDashboard data={data} />}
+                {role === 'STORE_OFFICER' && <StoreOfficerDashboard data={data} />}
+                {!['ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER', 'ACCOUNTANT', 'STORE_OFFICER'].includes(role) && (
+                    <AdminDashboard data={data} />
+                )}
+            </div>
         </div>
     )
 }

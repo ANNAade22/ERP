@@ -12,6 +12,8 @@ import {
     Search,
     FolderPlus,
 } from 'lucide-react'
+import { driver } from 'driver.js'
+import 'driver.js/dist/driver.css'
 import api from '../utils/api'
 import toast from 'react-hot-toast'
 
@@ -309,19 +311,39 @@ export default function Projects() {
         }
     }
 
+    const startTour = () => {
+        const driverObj = driver({
+            showProgress: true,
+            steps: [
+                { element: '#projects-page-header', popover: { title: 'Projects', description: 'Manage construction projects and track progress here. Use "Take tour" anytime to see these tips again. Click Close or press Escape to skip.' } },
+                { element: '#projects-gantt-link', popover: { title: 'Gantt & Milestones', description: 'Open the Gantt view to see and manage project timelines and milestones in one place.' } },
+                { element: '#projects-add-btn', popover: { title: 'New Project', description: 'Create a project with name, location, category, status, budget, timeline, team size, and description.' } },
+                { element: '#projects-filters', popover: { title: 'Search and filters', description: 'Search by name or location; filter by status and category; sort by name, budget, or start date.' } },
+                { element: '#projects-cards-grid', popover: { title: 'Project cards', description: 'Each card shows status, budget usage, milestones progress, and quick links to Gantt and project details. Use the icons to edit or delete.' } },
+            ],
+            onDestroyed: () => {
+                try { localStorage.setItem('projects-tour-done', 'true') } catch { /* ignore */ }
+            },
+        })
+        driverObj.drive()
+    }
+
     return (
         <div>
             {/* Page Header */}
-            <div className="page-header">
+            <div id="projects-page-header" className="page-header">
                 <div className="page-header-info">
                     <h1>Projects</h1>
                     <p>Manage construction projects and track progress</p>
                 </div>
                 <div className="page-header-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    <Link to="/projects/gantt-milestones" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button type="button" className="btn btn-secondary" onClick={startTour} title="Take a guided tour">
+                        Take tour
+                    </button>
+                    <Link id="projects-gantt-link" to="/projects/gantt-milestones" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                         <GanttChart size={18} /> Gantt & Milestones
                     </Link>
-                    <button className="btn btn-primary" onClick={openCreateModal}>+ New Project</button>
+                    <button id="projects-add-btn" type="button" className="btn btn-primary" onClick={openCreateModal}>+ New Project</button>
                 </div>
             </div>
 
@@ -331,8 +353,9 @@ export default function Projects() {
                 </div>
             )}
 
-            {!loading && projects.length > 0 && (
-                <div className="filter-row" style={{ marginBottom: 'var(--space-4)' }}>
+            {!loading && (
+                projects.length > 0 ? (
+                <div id="projects-filters" className="filter-row" style={{ marginBottom: 'var(--space-4)' }}>
                     <div style={{ position: 'relative', flex: 1 }}>
                         <Search size={16} style={{ position: 'absolute', left: 'var(--space-3)', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                         <input
@@ -368,6 +391,9 @@ export default function Projects() {
                         <option value="start-date">Start date</option>
                     </select>
                 </div>
+                ) : (
+                <div id="projects-filters" style={{ marginBottom: 'var(--space-4)', minHeight: 1 }} aria-hidden="true" />
+                )
             )}
 
             {loading ? (
@@ -383,21 +409,22 @@ export default function Projects() {
                         </div>
                     ))}
                 </div>
-            ) : projects.length === 0 ? (
-                <div className="content-card" style={{ padding: 'var(--space-12)', textAlign: 'center' }}>
-                    <FolderPlus size={48} style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-4)' }} />
-                    <h3 style={{ margin: '0 0 var(--space-2)', fontSize: 'var(--font-lg)' }}>No projects yet</h3>
-                    <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-6)' }}>Create your first project to get started.</p>
-                    <button type="button" className="btn btn-primary" onClick={openCreateModal}>+ New Project</button>
-                </div>
-            ) : sortedProjects.length === 0 ? (
-                <div className="content-card" style={{ padding: 'var(--space-12)', textAlign: 'center' }}>
-                    <Search size={40} style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-4)' }} />
-                    <p style={{ color: 'var(--text-secondary)', margin: 0 }}>No projects match your filters. Try adjusting search or filters.</p>
-                </div>
             ) : (
-                /* Project Cards Grid */
-                <div className="cards-grid cols-3">
+                <div id="projects-cards-grid">
+                    {projects.length === 0 ? (
+                        <div className="content-card" style={{ padding: 'var(--space-12)', textAlign: 'center' }}>
+                            <FolderPlus size={48} style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-4)' }} />
+                            <h3 style={{ margin: '0 0 var(--space-2)', fontSize: 'var(--font-lg)' }}>No projects yet</h3>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-6)' }}>Create your first project to get started.</p>
+                            <button type="button" className="btn btn-primary" onClick={openCreateModal}>+ New Project</button>
+                        </div>
+                    ) : sortedProjects.length === 0 ? (
+                        <div className="content-card" style={{ padding: 'var(--space-12)', textAlign: 'center' }}>
+                            <Search size={40} style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-4)' }} />
+                            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>No projects match your filters. Try adjusting search or filters.</p>
+                        </div>
+                    ) : (
+                        <div className="cards-grid cols-3">
                     {sortedProjects.map((project) => {
                         const progress = project.budget > 0 ? Math.min((project.spent_amount / project.budget) * 100, 100) : 0
 
@@ -501,6 +528,8 @@ export default function Projects() {
                             </div>
                         )
                     })}
+                        </div>
+                    )}
                 </div>
             )}
 

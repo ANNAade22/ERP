@@ -9,11 +9,12 @@ import (
 )
 
 var (
-	ErrUserNotFound      = errors.New("user not found")
-	ErrUserAlreadyExists = errors.New("user already exists")
-	ErrInvalidRole       = errors.New("invalid role")
-	ErrCannotDeleteSelf  = errors.New("cannot delete your own account")
-	ErrWeakPassword      = errors.New("password must be at least 6 characters")
+	ErrUserNotFound        = errors.New("user not found")
+	ErrUserAlreadyExists   = errors.New("user already exists")
+	ErrInvalidRole         = errors.New("invalid role")
+	ErrCannotDeleteSelf    = errors.New("cannot delete your own account")
+	ErrWeakPassword        = errors.New("password must be at least 6 characters")
+	ErrWrongCurrentPassword = errors.New("current password is incorrect")
 )
 
 type Service interface {
@@ -21,6 +22,8 @@ type Service interface {
 	ListUsers(ctx context.Context, roleFilter string) ([]models.User, error)
 	UpdateUserRole(ctx context.Context, id string, role models.Role) (*models.User, error)
 	ResetUserPassword(ctx context.Context, id string, newPassword string) (*models.User, error)
+	UpdateProfile(ctx context.Context, id string, name, email, phone string) (*models.User, error)
+	ChangeOwnPassword(ctx context.Context, id string, currentPassword, newPassword string) error
 	DeleteUser(ctx context.Context, id string, actorID string) error
 }
 
@@ -81,6 +84,39 @@ func (s *service) ResetUserPassword(ctx context.Context, id string, newPassword 
 		return nil, ErrUserNotFound
 	}
 	return user, nil
+}
+
+func (s *service) UpdateProfile(ctx context.Context, id string, name, email, phone string) (*models.User, error) {
+	user, err := s.repo.GetUserByID(ctx, id)
+	if err != nil {
+		return nil, ErrUserNotFound
+	}
+	if email != user.Email {
+		existing, _ := s.repo.GetUserByEmail(ctx, email)
+		if existing != nil && existing.ID != id {
+			return nil, ErrUserAlreadyExists
+		}
+	}
+	return s.repo.UpdateProfile(ctx, id, name, email, phone)
+}
+
+func (s *service) ChangeOwnPassword(ctx context.Context, id string, currentPassword, newPassword string) error {
+	if len(newPassword) < 6 {
+		return ErrWeakPassword
+	}
+	user, err := s.repo.GetUserByID(ctx, id)
+	if err != nil {
+		return ErrUserNotFound
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)); err != nil {
+		return ErrWrongCurrentPassword
+	}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	_, err = s.repo.UpdateUserPasswordHash(ctx, id, string(hashedPassword))
+	return err
 }
 
 func (s *service) DeleteUser(ctx context.Context, id string, actorID string) error {

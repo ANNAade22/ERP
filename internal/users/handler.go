@@ -29,6 +29,26 @@ func (h *Handler) ListUsers(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Users retrieved successfully", users)
 }
 
+// AssignableUser is a minimal user for assignment dropdowns (e.g. maintenance assignee).
+type AssignableUser struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// ListAssignableUsers returns id and name for all users (admin and project manager only).
+func (h *Handler) ListAssignableUsers(c *gin.Context) {
+	users, err := h.service.ListUsers(c.Request.Context(), "")
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to list users")
+		return
+	}
+	out := make([]AssignableUser, len(users))
+	for i := range users {
+		out[i] = AssignableUser{ID: users[i].ID, Name: users[i].Name}
+	}
+	utils.SuccessResponse(c, http.StatusOK, "Assignable users retrieved", out)
+}
+
 type UpdateUserRoleRequest struct {
 	Role models.Role `json:"role" binding:"required"`
 }
@@ -125,4 +145,79 @@ func (h *Handler) GetProfile(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Profile retrieved successfully", user)
+}
+
+type UpdateProfileRequest struct {
+	Name  string `json:"name" binding:"required"`
+	Email string `json:"email" binding:"required,email"`
+	Phone string `json:"phone"`
+}
+
+// UpdateProfile updates the current user's profile (name, email, phone).
+func (h *Handler) UpdateProfile(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	user, err := h.service.UpdateProfile(c.Request.Context(), userID.(string), req.Name, req.Email, req.Phone)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			utils.ErrorResponse(c, http.StatusNotFound, "User not found")
+			return
+		}
+		if errors.Is(err, ErrUserAlreadyExists) {
+			utils.ErrorResponse(c, http.StatusConflict, "A user with this email already exists")
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to update profile")
+		return
+	}
+	utils.SuccessResponse(c, http.StatusOK, "Profile updated successfully", user)
+}
+
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+}
+
+// ChangePassword allows the current user to change their own password.
+func (h *Handler) ChangePassword(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	err := h.service.ChangeOwnPassword(c.Request.Context(), userID.(string), req.CurrentPassword, req.NewPassword)
+	if err != nil {
+		if errors.Is(err, ErrWrongCurrentPassword) {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Current password is incorrect")
+			return
+		}
+		if errors.Is(err, ErrWeakPassword) {
+			utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		if errors.Is(err, ErrUserNotFound) {
+			utils.ErrorResponse(c, http.StatusNotFound, "User not found")
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to change password")
+		return
+	}
+	utils.SuccessResponse(c, http.StatusOK, "Password changed successfully", nil)
 }

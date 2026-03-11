@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Building2, TrendingDown, TrendingUp, Search, X, Download, Plus } from 'lucide-react'
+import { driver } from 'driver.js'
+import 'driver.js/dist/driver.css'
 import api from '../../utils/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -71,7 +73,7 @@ function formatLastUpdated(d: Date): string {
     return d.toLocaleTimeString()
 }
 
-export default function BudgetTracker() {
+function BudgetTracker() {
     const { user } = useAuth()
     const [overview, setOverview] = useState<Overview | null>(null)
     const [projectSummaries, setProjectSummaries] = useState<ProjectSummary[]>([])
@@ -332,6 +334,25 @@ export default function BudgetTracker() {
     const variancePositive = variance >= 0
     const tabs = ['Project Budgets', 'Category Breakdown', 'Monthly Trends']
 
+    const startTour = () => {
+        const driverObj = driver({
+            showProgress: true,
+            steps: [
+                { element: '#budget-tracker-header', popover: { title: 'Budget vs Actual Tracker', description: 'Monitor budget vs spending and variance here. Use "Take tour" anytime to see these tips again. Click Close or press Escape to skip.' } },
+                { element: '#budget-tracker-export-btn', popover: { title: 'Export Report', description: 'Download a CSV report of budget, actual, variance, and status for all projects.' } },
+                { element: '#budget-tracker-add-budget-btn', popover: { title: 'Add Budget', description: 'Set or update a project budget. Available to Admin and Project Manager.' } },
+                { element: '#budget-tracker-add-expense-btn', popover: { title: 'Add Expense', description: 'Record a cost for a project. Expenses need approval before they count toward actual spent.' } },
+                { element: '#budget-tracker-stat-cards', popover: { title: 'Overview', description: 'Total budget, actual spent, variance, and budget usage across all projects.' } },
+                { element: '#budget-tracker-tabs', popover: { title: 'Tabs', description: 'Switch between Project Budgets, Category Breakdown, and Monthly Trends.' } },
+                { element: '#budget-tracker-projects-card', popover: { title: 'Project Budgets', description: 'Per-project budget vs actual, variance, and progress. Use Cost Breakdown to view or cut costs; Update Budget to change the budget. Press Escape to close modals.' } },
+            ],
+            onDestroyed: () => {
+                try { localStorage.setItem('budget-tracker-tour-done', 'true'); } catch { /* ignore */ }
+            },
+        })
+        driverObj.drive()
+    }
+
     if (loading && !overview) {
         return (
             <div>
@@ -361,34 +382,37 @@ export default function BudgetTracker() {
 
     return (
         <div>
-            <div className="page-header" style={{ flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+            <div id="budget-tracker-header" className="page-header" style={{ flexWrap: 'wrap', gap: 'var(--space-4)' }}>
                 <div className="page-header-info">
                     <h1>Budget vs Actual Tracker</h1>
                     <p>Real-time budget monitoring and variance analysis. Data refreshes every 30 seconds.</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                    <button type="button" className="btn btn-secondary" onClick={startTour} title="Take a guided tour">
+                        Take tour
+                    </button>
                     {lastUpdated && (
                         <span style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
                             Last updated {formatLastUpdated(lastUpdated)}
                         </span>
                     )}
-                    <button type="button" className="btn btn-secondary" onClick={handleExportReport} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button id="budget-tracker-export-btn" type="button" className="btn btn-secondary" onClick={handleExportReport} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Download size={16} /> Export Report
                     </button>
                     {canUpdateBudget(user?.role) && (
-                        <button type="button" className="btn btn-secondary" onClick={() => { setShowAddBudgetModal(true); setUpdateBudgetProject(projectSummaries[0] || null); setUpdateBudgetValue(projectSummaries[0]?.budget?.toString() || '0'); }} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button id="budget-tracker-add-budget-btn" type="button" className="btn btn-secondary" onClick={() => { setShowAddBudgetModal(true); setUpdateBudgetProject(projectSummaries[0] || null); setUpdateBudgetValue(projectSummaries[0]?.budget?.toString() || '0'); }} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Plus size={16} /> Add Budget
                         </button>
                     )}
                     {canAddExpense(user?.role) && (
-                        <button type="button" className="btn btn-primary" onClick={() => setShowAddExpenseModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button id="budget-tracker-add-expense-btn" type="button" className="btn btn-primary" onClick={() => setShowAddExpenseModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Plus size={16} /> Add Expense
                         </button>
                     )}
                 </div>
             </div>
 
-            <div className="stat-cards">
+            <div id="budget-tracker-stat-cards" className="stat-cards">
                 {stats.map((stat, i) => (
                     <div className="stat-card" key={i}>
                         <div className="stat-card-title" style={{ marginBottom: 'var(--space-2)' }}>{stat.title}</div>
@@ -409,7 +433,7 @@ export default function BudgetTracker() {
                 ))}
             </div>
 
-            <div className="tabs">
+            <div id="budget-tracker-tabs" className="tabs">
                 {tabs.map((tab, i) => (
                     <div
                         key={tab}
@@ -422,7 +446,7 @@ export default function BudgetTracker() {
             </div>
 
             {activeTab === 0 && (
-                <div className="content-card" style={{ padding: 'var(--space-4)' }}>
+                <div id="budget-tracker-projects-card" className="content-card" style={{ padding: 'var(--space-4)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', marginBottom: 'var(--space-3)', flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap', minWidth: 0 }}>
                             <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>Project Budget Performance</span>
@@ -946,3 +970,5 @@ export default function BudgetTracker() {
         </div>
     )
 }
+
+export default BudgetTracker

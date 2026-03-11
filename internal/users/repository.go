@@ -15,6 +15,7 @@ type Repository interface {
 	ListUsers(ctx context.Context, roleFilter string) ([]models.User, error)
 	UpdateUserRole(ctx context.Context, id string, role models.Role) (*models.User, error)
 	UpdateUserPasswordHash(ctx context.Context, id string, passwordHash string) (*models.User, error)
+	UpdateProfile(ctx context.Context, id string, name, email, phone string) (*models.User, error)
 	DeleteUser(ctx context.Context, id string) error
 }
 
@@ -76,6 +77,20 @@ func (r *repository) UpdateUserPasswordHash(ctx context.Context, id string, pass
 		return nil, err
 	}
 	user.PasswordHash = passwordHash
+	if err := r.db.WithContext(ctx).Save(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *repository) UpdateProfile(ctx context.Context, id string, name, email, phone string) (*models.User, error) {
+	var user models.User
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&user).Error; err != nil {
+		return nil, err
+	}
+	user.Name = name
+	user.Email = email
+	user.Phone = phone
 	if err := r.db.WithContext(ctx).Save(&user).Error; err != nil {
 		return nil, err
 	}

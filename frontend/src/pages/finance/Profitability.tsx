@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Building2, Download } from 'lucide-react'
+import { driver } from 'driver.js'
+import 'driver.js/dist/driver.css'
 import api from '../../utils/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -126,26 +128,42 @@ export default function Profitability() {
         { title: 'Profit Margin', value: `${d.profit_margin.toFixed(1)}%`, subtitle: 'Overall margin', subtitleType: 'neutral' as const },
     ]
 
+    const startTour = () => {
+        const driverObj = driver({
+            showProgress: true,
+            steps: [
+                { element: '#profitability-header', popover: { title: 'Project Profitability Analytics', description: 'Analyze profit margins and financial performance. Use "Take tour" anytime to see these tips again. Click Close or press Escape to skip.' } },
+                { element: '#profitability-export-btn', popover: { title: 'Export Analysis', description: 'Download a CSV report of revenue, costs, profit, and margins per project.' } },
+                { element: '#profitability-stat-cards', popover: { title: 'Summary', description: 'Total revenue, total costs, net profit, and overall profit margin.' } },
+                { element: '#profitability-tabs', popover: { title: 'Tabs', description: 'Switch between Project Analysis, Trend Analysis, Cost Analysis, and Revenue Streams.' } },
+                { element: '#profitability-content', popover: { title: 'Project breakdown', description: 'Per-project profitability with revenue, costs, profit, margin, and completion. Filter by status; use View Details to open a project.' } },
+            ],
+            onDestroyed: () => { try { localStorage.setItem('profitability-tour-done', 'true') } catch { /* ignore */ } },
+        })
+        driverObj.drive()
+    }
+
     return (
         <div>
-            <div className="page-header">
+            <div id="profitability-header" className="page-header">
                 <div className="page-header-info">
                     <h1>Project Profitability Analytics</h1>
                     <p>Analyze profit margins and financial performance across projects. Data refreshes every 30 seconds.</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                    <button type="button" className="btn btn-secondary" onClick={startTour} title="Take a guided tour">Take tour</button>
                     {lastUpdated && (
                         <span style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
                             Last updated {lastUpdated.toLocaleTimeString()}
                         </span>
                     )}
-                    <button type="button" className="btn btn-secondary" onClick={handleExportAnalysis} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button id="profitability-export-btn" type="button" className="btn btn-secondary" onClick={handleExportAnalysis} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Download size={16} /> Export Analysis
                     </button>
                 </div>
             </div>
 
-            <div className="stat-cards">
+            <div id="profitability-stat-cards" className="stat-cards">
                 {stats.map((stat, i) => (
                     <div className="stat-card" key={i}>
                         <div className="stat-card-title" style={{ marginBottom: 'var(--space-2)' }}>{stat.title}</div>
@@ -155,7 +173,7 @@ export default function Profitability() {
                 ))}
             </div>
 
-            <div className="tabs">
+            <div id="profitability-tabs" className="tabs">
                 {tabs.map((tab, i) => (
                     <div
                         key={tab}
@@ -168,7 +186,7 @@ export default function Profitability() {
             </div>
 
             {activeTab === 0 && (
-                <div className="content-card">
+                <div id="profitability-content" className="content-card">
                     <div className="content-card-header" style={{ flexWrap: 'wrap', gap: 'var(--space-4)' }}>
                         <div>
                             <div className="content-card-title">Project Profitability Breakdown</div>

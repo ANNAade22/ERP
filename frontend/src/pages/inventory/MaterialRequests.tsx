@@ -11,6 +11,8 @@ import {
     X,
     XCircle,
 } from 'lucide-react'
+import { driver } from 'driver.js'
+import 'driver.js/dist/driver.css'
 import api from '../../utils/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -391,6 +393,23 @@ export default function MaterialRequests() {
 
     const rows = useMemo(() => requests, [requests])
 
+    const startTour = () => {
+        const driverObj = driver({
+            showProgress: true,
+            steps: [
+                { element: '#inventory-requests-header', popover: { title: 'Material Requests (MRN)', description: 'Manage procurement requests here. Use "Take tour" anytime to see these tips again. Click Close or press Escape to skip.' } },
+                { element: '#inventory-requests-create-btn', popover: { title: 'Create Request', description: 'Submit a new material request for a site with materials, quantities, and unit prices.' } },
+                { element: '#inventory-requests-stat-cards', popover: { title: 'Request summary', description: 'Counts: pending, approved, fulfilled, and total value of requests.' } },
+                { element: '#inventory-requests-filters', popover: { title: 'Search and filters', description: 'Search by request ID, site, or requester; filter by project and status.' } },
+                { element: '#inventory-requests-table-card', popover: { title: 'Material Requests table', description: 'View all requests. Use row actions to view, edit (pending only), or change status (approve, reject, mark ordered/received). Press Escape to close modals.' } },
+            ],
+            onDestroyed: () => {
+                try { localStorage.setItem('inventory-requests-tour-done', 'true'); } catch { /* ignore */ }
+            },
+        })
+        driverObj.drive()
+    }
+
     const stats = [
         { value: pending.toString(), label: 'Pending', icon: <Clock size={20} />, color: 'var(--warning)' },
         { value: approved.toString(), label: 'Approved', icon: <CheckCircle size={20} />, color: 'var(--info)' },
@@ -413,19 +432,22 @@ export default function MaterialRequests() {
 
     return (
         <div>
-            <div className="page-header">
+            <div id="inventory-requests-header" className="page-header">
                 <div className="page-header-info">
                     <h1>Material Requests (MRN)</h1>
                     <p>Automated material request management system</p>
                 </div>
-                {canCreate(user?.role) && (
-                    <div className="page-header-actions">
-                        <button className="btn btn-primary" onClick={openCreate}>
+                <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <button type="button" className="btn btn-secondary" onClick={startTour} title="Take a guided tour">
+                        Take tour
+                    </button>
+                    {canCreate(user?.role) && (
+                        <button id="inventory-requests-create-btn" type="button" className="btn btn-primary" onClick={openCreate}>
                             <Plus size={16} />
                             Create Request
                         </button>
-                    </div>
-                )}
+                    )}
+                </div>
                 {lastUpdated && (
                     <span style={{ fontSize: 'var(--font-sm)', color: 'var(--text-muted)' }}>
                         Updated {lastUpdated.toLocaleTimeString()}
@@ -433,7 +455,7 @@ export default function MaterialRequests() {
                 )}
             </div>
 
-            <div className="stat-cards">
+            <div id="inventory-requests-stat-cards" className="stat-cards">
                 {stats.map((stat, i) => (
                     <div className="stat-card" key={i}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -447,7 +469,7 @@ export default function MaterialRequests() {
                 ))}
             </div>
 
-            <div className="filter-row">
+            <div id="inventory-requests-filters" className="filter-row">
                 <input
                     className="filter-input"
                     type="text"
@@ -477,7 +499,7 @@ export default function MaterialRequests() {
                 </select>
             </div>
 
-            <div className="content-card">
+            <div id="inventory-requests-table-card" className="content-card">
                 <div className="content-card-header">
                     <div>
                         <div className="content-card-title">Material Requests</div>
