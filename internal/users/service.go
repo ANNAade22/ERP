@@ -9,21 +9,24 @@ import (
 )
 
 var (
-	ErrUserNotFound        = errors.New("user not found")
-	ErrUserAlreadyExists   = errors.New("user already exists")
-	ErrInvalidRole         = errors.New("invalid role")
-	ErrCannotDeleteSelf    = errors.New("cannot delete your own account")
+	ErrUserNotFound          = errors.New("user not found")
+	ErrUserAlreadyExists     = errors.New("user already exists")
+	ErrInvalidRole           = errors.New("invalid role")
+	ErrCannotDeleteSelf      = errors.New("cannot delete your own account")
+	ErrCannotDeactivateSelf  = errors.New("cannot deactivate your own account")
 	ErrWeakPassword        = errors.New("password must be at least 6 characters")
 	ErrWrongCurrentPassword = errors.New("current password is incorrect")
 )
 
 type Service interface {
 	GetUserByID(ctx context.Context, id string) (*models.User, error)
-	ListUsers(ctx context.Context, roleFilter string) ([]models.User, error)
+	ListUsers(ctx context.Context, roleFilter string, activeOnly *bool) ([]models.User, error)
 	UpdateUserRole(ctx context.Context, id string, role models.Role) (*models.User, error)
 	ResetUserPassword(ctx context.Context, id string, newPassword string) (*models.User, error)
 	UpdateProfile(ctx context.Context, id string, name, email, phone string) (*models.User, error)
 	UpdateProfileAvatar(ctx context.Context, userID, avatarPath string) (*models.User, error)
+	ClearUserAvatar(ctx context.Context, userID string) (*models.User, error)
+	SetUserActive(ctx context.Context, id string, active bool, actorID string) (*models.User, error)
 	ChangeOwnPassword(ctx context.Context, id string, currentPassword, newPassword string) error
 	DeleteUser(ctx context.Context, id string, actorID string) error
 }
@@ -44,8 +47,8 @@ func (s *service) GetUserByID(ctx context.Context, id string) (*models.User, err
 	return user, nil
 }
 
-func (s *service) ListUsers(ctx context.Context, roleFilter string) ([]models.User, error) {
-	return s.repo.ListUsers(ctx, roleFilter)
+func (s *service) ListUsers(ctx context.Context, roleFilter string, activeOnly *bool) ([]models.User, error) {
+	return s.repo.ListUsers(ctx, roleFilter, activeOnly)
 }
 
 func isValidRole(role models.Role) bool {
@@ -109,6 +112,10 @@ func (s *service) UpdateProfileAvatar(ctx context.Context, userID, avatarPath st
 	return s.repo.UpdateAvatarPath(ctx, userID, avatarPath)
 }
 
+func (s *service) ClearUserAvatar(ctx context.Context, userID string) (*models.User, error) {
+	return s.repo.ClearAvatarPath(ctx, userID)
+}
+
 func (s *service) ChangeOwnPassword(ctx context.Context, id string, currentPassword, newPassword string) error {
 	if len(newPassword) < 6 {
 		return ErrWeakPassword
@@ -126,6 +133,17 @@ func (s *service) ChangeOwnPassword(ctx context.Context, id string, currentPassw
 	}
 	_, err = s.repo.UpdateUserPasswordHash(ctx, id, string(hashedPassword))
 	return err
+}
+
+func (s *service) SetUserActive(ctx context.Context, id string, active bool, actorID string) (*models.User, error) {
+	if id == actorID && !active {
+		return nil, ErrCannotDeactivateSelf
+	}
+	user, err := s.repo.UpdateUserActive(ctx, id, active)
+	if err != nil {
+		return nil, ErrUserNotFound
+	}
+	return user, nil
 }
 
 func (s *service) DeleteUser(ctx context.Context, id string, actorID string) error {

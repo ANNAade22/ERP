@@ -2043,6 +2043,38 @@ img {
   gap: var(--space-2);
 }
 
+.registry-avatar-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.registry-status-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.registry-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-xs);
+  font-weight: 500;
+}
+
+.registry-status-active {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.registry-status-inactive {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
 /* ---------- Modal ---------- */
 .modal-overlay {
   position: fixed;

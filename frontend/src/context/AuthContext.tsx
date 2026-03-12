@@ -8,6 +8,7 @@ interface User {
     role: string;
     exp: number;
     name?: string;
+    avatar_path?: string;
 }
 
 interface AuthContextType {
@@ -84,14 +85,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     useEffect(() => {
         if (!token || !isAuthReady) return;
         let cancelled = false;
-        api.get<{ data?: { name?: string } }>('/profile')
+        api.get<{ data?: { name?: string; avatar_path?: string } }>('/profile')
             .then((res) => {
                 if (cancelled) return;
-                const data = res.data?.data ?? (res.data as { name?: string } | undefined);
-                const name = data?.name;
-                if (name !== undefined) {
-                    setUser((prev) => (prev ? { ...prev, name } : null));
-                }
+                const data = res.data?.data ?? (res.data as { name?: string; avatar_path?: string } | undefined);
+                setUser((prev) => {
+                    if (!prev) return null;
+                    const updates: Partial<{ name: string; avatar_path: string }> = {};
+                    if (data?.name !== undefined) updates.name = data.name;
+                    if (data?.avatar_path !== undefined) updates.avatar_path = data.avatar_path;
+                    return Object.keys(updates).length ? { ...prev, ...updates } : prev;
+                });
             })
             .catch(() => {});
         return () => { cancelled = true; };

@@ -50,7 +50,7 @@ export default function Header() {
                         aria-expanded={dropdownOpen}
                         aria-haspopup="true"
                     >
-                        {user && <Avatar userId={user.id} name={displayName} email={user.email} size="sm" className="header-user-avatar" />}
+                        {user && <Avatar userId={user.id} name={displayName} email={user.email} size="sm" className="header-user-avatar" skipImage={!user.avatar_path} />}
                         <span>{displayName}</span>
                     </button>
                     {dropdownOpen && (

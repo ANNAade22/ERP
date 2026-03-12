@@ -44,7 +44,7 @@ func (h *Handler) allowedAvatarExt(name string) bool {
 // ListUsers returns all users (admin only). Query: role= to filter by role.
 func (h *Handler) ListUsers(c *gin.Context) {
 	roleFilter := c.Query("role")
-	users, err := h.service.ListUsers(c.Request.Context(), roleFilter)
+	users, err := h.service.ListUsers(c.Request.Context(), roleFilter, nil)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to list users")
 		return
@@ -58,9 +58,10 @@ type AssignableUser struct {
 	Name string `json:"name"`
 }
 
-// ListAssignableUsers returns id and name for all users (admin and project manager only).
+// ListAssignableUsers returns id and name for active users only (admin and project manager only).
 func (h *Handler) ListAssignableUsers(c *gin.Context) {
-	users, err := h.service.ListUsers(c.Request.Context(), "")
+	activeOnly := true
+	users, err := h.service.ListUsers(c.Request.Context(), "", &activeOnly)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to list users")
 		return
@@ -78,6 +79,10 @@ type UpdateUserRoleRequest struct {
 
 type ResetPasswordRequest struct {
 	Password string `json:"password" binding:"required,min=6"`
+}
+
+type SetUserActiveRequest struct {
+	Active *bool `json:"active" binding:"required"`
 }
 
 // UpdateUserRole updates one user's role (admin only).
@@ -126,6 +131,35 @@ func (h *Handler) ResetUserPassword(c *gin.Context) {
 		return
 	}
 	utils.SuccessResponse(c, http.StatusOK, "User password reset successfully", user)
+}
+
+// SetUserActive sets a user's active status (admin only). Inactive users cannot log in.
+func (h *Handler) SetUserActive(c *gin.Context) {
+	id := c.Param("id")
+	actorID, _ := c.Get("userID")
+	var req SetUserActiveRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	if req.Active == nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "active field is required")
+		return
+	}
+	user, err := h.service.SetUserActive(c.Request.Context(), id, *req.Active, actorID.(string))
+	if err != nil {
+		if errors.Is(err, ErrCannotDeactivateSelf) {
+			utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		if errors.Is(err, ErrUserNotFound) {
+			utils.ErrorResponse(c, http.StatusNotFound, "User not found")
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to update user status")
+		return
+	}
+	utils.SuccessResponse(c, http.StatusOK, "User status updated successfully", user)
 }
 
 // DeleteUser soft-deletes one user (admin only).
@@ -296,6 +330,93 @@ func (h *Handler) UploadProfileAvatar(c *gin.Context) {
 
 	c.Header("Cache-Control", "private, max-age=86400")
 	utils.SuccessResponse(c, http.StatusOK, "Profile picture updated successfully", user)
+}
+
+// UploadUserAvatar handles POST /users/:id/avatar (admin only). Same as UploadProfileAvatar but for any user by ID.
+func (h *Handler) UploadUserAvatar(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "User ID is required")
+		return
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "No file uploaded. Use form field 'file'.")
+		return
+	}
+	if file.Size > maxAvatarSize {
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("File too large. Max size is %d MB.", maxAvatarSize>>20))
+		return
+	}
+	if !h.allowedAvatarExt(file.Filename) {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid file type. Allowed: "+allowedAvatarTypes)
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext == ".jpeg" {
+		ext = ".jpg"
+	}
+	relPath := filepath.Join("avatars", id+ext)
+	absPath := filepath.Join(h.uploadDir, relPath)
+	if err := os.MkdirAll(filepath.Dir(absPath), 0755); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to create upload directory")
+		return
+	}
+	if err := c.SaveUploadedFile(file, absPath); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to save file")
+		return
+	}
+
+	user, err := h.service.UpdateProfileAvatar(c.Request.Context(), id, relPath)
+	if err != nil {
+		_ = os.Remove(absPath)
+		if errors.Is(err, ErrUserNotFound) {
+			utils.ErrorResponse(c, http.StatusNotFound, "User not found")
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to update user avatar")
+		return
+	}
+
+	c.Header("Cache-Control", "private, max-age=86400")
+	utils.SuccessResponse(c, http.StatusOK, "Profile picture updated successfully", user)
+}
+
+// DeleteUserAvatar removes a user's profile picture (admin only).
+func (h *Handler) DeleteUserAvatar(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "User ID is required")
+		return
+	}
+
+	user, err := h.service.GetUserByID(c.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			utils.ErrorResponse(c, http.StatusNotFound, "User not found")
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to get user")
+		return
+	}
+
+	if user.AvatarPath != "" {
+		clean := filepath.Clean(user.AvatarPath)
+		if !strings.Contains(clean, "..") && (strings.HasPrefix(clean, "avatars/") || strings.HasPrefix(clean, "avatars\\")) {
+			absPath := filepath.Join(h.uploadDir, clean)
+			_ = os.Remove(absPath)
+		}
+	}
+
+	user, err = h.service.ClearUserAvatar(c.Request.Context(), id)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to remove profile picture")
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Profile picture removed", user)
 }
 
 // ServeUserAvatar serves the avatar image for a user. GET /users/:id/avatar

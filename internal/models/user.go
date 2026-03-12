@@ -23,6 +23,7 @@ type User struct {
 	Phone        string         `gorm:"type:varchar(50)" json:"phone"`
 	PasswordHash string         `gorm:"type:varchar(255);not null" json:"-"`
 	Role         Role           `gorm:"type:varchar(50);not null" json:"role"`
+	Active       bool           `gorm:"default:true;not null" json:"active"`
 	AvatarPath   string         `gorm:"type:varchar(512)" json:"avatar_path,omitempty"`
 	CreatedAt    time.Time      `json:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at"`

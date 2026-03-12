@@ -15,6 +15,7 @@ import (
 var (
 	ErrInvalidCredentials = errors.New("invalid email or password")
 	ErrUserAlreadyExists  = errors.New("user with this email already exists")
+	ErrUserInactive       = errors.New("account is inactive")
 )
 
 type Service interface {
@@ -79,6 +80,10 @@ func (s *service) Login(ctx context.Context, req LoginRequest) (string, error) {
 	user, err := s.userRepo.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		return "", ErrInvalidCredentials
+	}
+
+	if !user.Active {
+		return "", ErrUserInactive
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))

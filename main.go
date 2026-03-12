@@ -128,11 +128,13 @@ func main() {
 		{
 			protected.GET("/profile", userHandler.GetProfile)
 			protected.PATCH("/profile", userHandler.UpdateProfile)
-			protected.POST("/profile/avatar", userHandler.UploadProfileAvatar)
 			protected.POST("/profile/change-password", userHandler.ChangePassword)
 			protected.GET("/users/assignable", middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager), userHandler.ListAssignableUsers)
 			protected.GET("/users", middleware.RoleMiddleware(models.RoleAdmin), userHandler.ListUsers)
+			protected.POST("/users/:id/avatar", middleware.RoleMiddleware(models.RoleAdmin), userHandler.UploadUserAvatar)
+			protected.DELETE("/users/:id/avatar", middleware.RoleMiddleware(models.RoleAdmin), userHandler.DeleteUserAvatar)
 			protected.PATCH("/users/:id/role", middleware.RoleMiddleware(models.RoleAdmin), userHandler.UpdateUserRole)
+			protected.PATCH("/users/:id/status", middleware.RoleMiddleware(models.RoleAdmin), userHandler.SetUserActive)
 			protected.PATCH("/users/:id/password", middleware.RoleMiddleware(models.RoleAdmin), userHandler.ResetUserPassword)
 			protected.DELETE("/users/:id", middleware.RoleMiddleware(models.RoleAdmin), userHandler.DeleteUser)
 

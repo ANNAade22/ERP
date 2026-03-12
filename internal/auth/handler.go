@@ -50,6 +50,10 @@ func (h *Handler) Login(c *gin.Context) {
 			utils.ErrorResponse(c, http.StatusUnauthorized, err.Error())
 			return
 		}
+		if errors.Is(err, ErrUserInactive) {
+			utils.ErrorResponse(c, http.StatusForbidden, err.Error())
+			return
+		}
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to login")
 		return
 	}

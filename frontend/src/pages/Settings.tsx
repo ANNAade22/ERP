@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import api from '../utils/api'
@@ -6,9 +6,6 @@ import toast from 'react-hot-toast'
 import Avatar from '../components/Avatar'
 
 const COMPANY_STORAGE_KEY = 'erp-company-settings'
-
-const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-const MAX_AVATAR_BYTES = 2 * 1024 * 1024 // 2 MB
 
 type Profile = {
     id: string
@@ -60,8 +57,6 @@ export default function Settings() {
     const [company, setCompany] = useState<CompanySettings>(defaultCompany)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
-    const [uploadingAvatar, setUploadingAvatar] = useState(false)
-    const fileInputRef = useRef<HTMLInputElement>(null)
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -119,39 +114,6 @@ export default function Settings() {
         toast.success('Changes discarded')
     }
 
-    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (!file || !profile) return
-        if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
-            toast.error('Please choose a JPEG, PNG, GIF, or WebP image.')
-            return
-        }
-        if (file.size > MAX_AVATAR_BYTES) {
-            toast.error('Image must be 2 MB or smaller.')
-            return
-        }
-        setUploadingAvatar(true)
-        try {
-            const formData = new FormData()
-            formData.append('file', file)
-            const res = await api.post<{ data: Profile }>('/profile/avatar', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            })
-            const updated = res.data?.data ?? res.data
-            if (updated && 'id' in updated) {
-                setProfile(updated as Profile)
-                toast.success('Profile picture updated')
-            }
-        } catch (err: unknown) {
-            const ax = err as { response?: { data?: { message?: string } } }
-            toast.error(ax.response?.data?.message || 'Failed to upload picture')
-        } finally {
-            setUploadingAvatar(false)
-            e.target.value = ''
-            fileInputRef.current?.value && (fileInputRef.current.value = '')
-        }
-    }
-
     const startTour = () => {
         const driverObj = driver({
             showProgress: true,
@@ -195,27 +157,9 @@ export default function Settings() {
                             <label className="form-label">Profile picture</label>
                             <div className="settings-avatar-block">
                                 {profile && (
-                                    <Avatar userId={profile.id} name={profile.name} email={profile.email} size="lg" />
+                                    <Avatar userId={profile.id} name={profile.name} email={profile.email} size="lg" skipImage={!profile.avatar_path} />
                                 )}
-                                <div className="settings-avatar-actions">
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp"
-                                        onChange={handleAvatarChange}
-                                        disabled={uploadingAvatar}
-                                        className="settings-avatar-input"
-                                        aria-label="Upload profile picture"
-                                    />
-                                    <button
-                                        type="button"
-                                        className="btn btn-secondary"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        disabled={uploadingAvatar}
-                                    >
-                                        {uploadingAvatar ? 'Uploading…' : 'Upload photo'}
-                                    </button>
-                                </div>
+                                <p className="form-hint" style={{ margin: 0 }}>Profile pictures are managed by admins in the User Registry.</p>
                             </div>
                         </div>
                     </div>

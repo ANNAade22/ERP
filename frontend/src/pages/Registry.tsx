@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect } from 'react'
-import { KeyRound, Save, Trash2, UserPlus, X } from 'lucide-react'
+import { useMemo, useState, useEffect, useRef } from 'react'
+import { Camera, ImageMinus, KeyRound, Loader2, Save, Trash2, UserCheck, UserX, UserPlus, X } from 'lucide-react'
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import api from '../utils/api'
@@ -14,6 +14,8 @@ interface RegistryUser {
     name: string
     email: string
     role: string
+    active?: boolean
+    avatar_path?: string
     created_at: string
 }
 
@@ -27,6 +29,8 @@ export default function Registry() {
     const [pendingRoles, setPendingRoles] = useState<Record<string, string>>({})
     const [showAddModal, setShowAddModal] = useState(false)
     const [showResetModal, setShowResetModal] = useState(false)
+    const [showRemoveAvatarModal, setShowRemoveAvatarModal] = useState(false)
+    const [removeAvatarTarget, setRemoveAvatarTarget] = useState<RegistryUser | null>(null)
     const [resetTarget, setResetTarget] = useState<RegistryUser | null>(null)
     const [addLoading, setAddLoading] = useState(false)
     const [resetLoading, setResetLoading] = useState(false)
@@ -37,6 +41,13 @@ export default function Registry() {
         password: '',
         role: 'SITE_ENGINEER' as string,
     })
+    const [addFormAvatarFile, setAddFormAvatarFile] = useState<File | null>(null)
+    const addFormAvatarInputRef = useRef<HTMLInputElement>(null)
+    const [avatarUploadingId, setAvatarUploadingId] = useState<string | null>(null)
+    const [avatarRemovingId, setAvatarRemovingId] = useState<string | null>(null)
+    const [avatarVersion, setAvatarVersion] = useState<Record<string, number>>({})
+    const avatarFileInputRef = useRef<HTMLInputElement>(null)
+    const avatarUploadTargetRef = useRef<RegistryUser | null>(null)
 
     const fetchUsers = async () => {
         try {
@@ -81,15 +92,35 @@ export default function Registry() {
         }
         setAddLoading(true)
         try {
-            await api.post('/auth/register', {
+            const regRes = await api.post<{ data?: { id?: string } }>('/auth/register', {
                 name: addForm.name.trim(),
                 email: addForm.email.trim().toLowerCase(),
                 password: addForm.password,
                 role: addForm.role,
             })
-            toast.success('User registered successfully.')
+            const newUser = regRes.data?.data
+            const newId = newUser?.id
+            if (addFormAvatarFile && newId) {
+                const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+                if (allowed.includes(addFormAvatarFile.type) && addFormAvatarFile.size <= 2 * 1024 * 1024) {
+                    try {
+                        const formData = new FormData()
+                        formData.append('file', addFormAvatarFile)
+                        await api.post(`/users/${newId}/avatar`, formData)
+                        toast.success('User added with profile picture.')
+                    } catch {
+                        toast.success('User added. Profile picture upload failed.')
+                    }
+                } else {
+                    toast.success('User added. (Photo skipped: invalid type or size)')
+                }
+            } else {
+                toast.success('User registered successfully.')
+            }
             setShowAddModal(false)
             setAddForm({ name: '', email: '', password: '', role: 'SITE_ENGINEER' })
+            setAddFormAvatarFile(null)
+            addFormAvatarInputRef.current && (addFormAvatarInputRef.current.value = '')
             fetchUsers()
         } catch (err: unknown) {
             const ax = err as { response?: { data?: { message?: string }; status?: number } }
@@ -139,6 +170,107 @@ export default function Registry() {
         } catch (err: unknown) {
             const ax = err as { response?: { data?: { message?: string } } }
             toast.error(ax.response?.data?.message || 'Failed to delete user.')
+        } finally {
+            setRowLoadingId(null)
+        }
+    }
+
+    const triggerAvatarUpload = (targetUser: RegistryUser) => {
+        avatarUploadTargetRef.current = targetUser
+        avatarFileInputRef.current?.click()
+    }
+
+    const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const targetUser = avatarUploadTargetRef.current
+        if (!targetUser) return
+        avatarUploadTargetRef.current = null
+        await handleAvatarUpload(e, targetUser)
+    }
+
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>, targetUser: RegistryUser) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+        if (!allowed.includes(file.type)) {
+            toast.error('Please choose a JPEG, PNG, GIF, or WebP image.')
+            return
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error('Image must be 2 MB or smaller.')
+            return
+        }
+        setAvatarUploadingId(targetUser.id)
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+            const res = await api.post<{ data?: { avatar_path?: string } }>(`/users/${targetUser.id}/avatar`, formData)
+            const updated = res.data?.data
+            if (updated?.avatar_path) {
+                setUsers((prev) =>
+                    prev.map((u) => (u.id === targetUser.id ? { ...u, avatar_path: updated!.avatar_path } : u))
+                )
+            }
+            setAvatarVersion((v) => ({ ...v, [targetUser.id]: (v[targetUser.id] ?? 0) + 1 }))
+            toast.success(`Profile picture updated for ${targetUser.name}`)
+        } catch (err: unknown) {
+            const ax = err as { response?: { data?: { message?: string } } }
+            toast.error(ax.response?.data?.message || 'Failed to upload picture')
+        } finally {
+            setAvatarUploadingId(null)
+            e.target.value = ''
+        }
+    }
+
+    const openRemoveAvatarModal = (targetUser: RegistryUser) => {
+        setRemoveAvatarTarget(targetUser)
+        setShowRemoveAvatarModal(true)
+    }
+
+    const handleRemoveAvatarConfirm = async () => {
+        const targetUser = removeAvatarTarget
+        if (!targetUser) return
+        setAvatarRemovingId(targetUser.id)
+        try {
+            const res = await api.delete<{ success?: boolean }>(`/users/${targetUser.id}/avatar`)
+            if (res.data?.success) {
+                setUsers((prev) =>
+                    prev.map((u) => (u.id === targetUser.id ? { ...u, avatar_path: '' } : u))
+                )
+                setAvatarVersion((v) => ({ ...v, [targetUser.id]: (v[targetUser.id] ?? 0) + 1 }))
+                toast.success('Profile picture removed')
+                setShowRemoveAvatarModal(false)
+                setRemoveAvatarTarget(null)
+            } else {
+                toast.error('Failed to remove profile picture')
+            }
+        } catch (err: unknown) {
+            const ax = err as { response?: { data?: { message?: string }; status?: number } }
+            const msg = ax.response?.data?.message ?? (ax.response?.status === 404 ? 'Avatar endpoint not found.' : 'Failed to remove profile picture.')
+            toast.error(msg)
+        } finally {
+            setAvatarRemovingId(null)
+        }
+    }
+
+    const handleSetActive = async (targetUser: RegistryUser, active: boolean) => {
+        if (targetUser.id === currentUser?.id && !active) {
+            toast.error('You cannot deactivate your own account.')
+            return
+        }
+        setRowLoadingId(targetUser.id)
+        try {
+            const res = await api.patch(`/users/${targetUser.id}/status`, { active })
+            if (res.data?.success) {
+                setUsers((prev) =>
+                    prev.map((u) => (u.id === targetUser.id ? { ...u, active } : u))
+                )
+                toast.success(active ? 'User activated.' : 'User deactivated.')
+            } else {
+                toast.error('Failed to update status.')
+            }
+        } catch (err: unknown) {
+            const ax = err as { response?: { data?: { message?: string } } }
+            toast.error(ax.response?.data?.message || 'Failed to update status.')
         } finally {
             setRowLoadingId(null)
         }
@@ -196,10 +328,10 @@ export default function Registry() {
     const startTour = () => {
         const steps: { element: string; popover: { title: string; description: string } }[] = [
             { element: '#registry-header', popover: { title: 'User Registry', description: 'View and manage all users and their roles. Only admins can add users or change roles. Use "Take tour" anytime to see these tips again. Click Close or press Escape to skip.' } },
-            { element: '#registry-add-area', popover: { title: 'Add user', description: isAdmin ? 'Register a new user with name, email, password, and role. Click to open the form.' : 'Only admins see the Add user button here. You can still view and search the user list.' } },
+            { element: '#registry-add-area', popover: { title: 'Add user', description: isAdmin ? 'Register a new user with name, email, password, role, and optionally a profile picture. Click to open the form.' : 'Only admins see the Add user button here. You can still view and search the user list.' } },
             { element: '#registry-filters', popover: { title: 'Search and filter', description: 'Search by name, email, or role. Use "Filter by role" to show only one role (e.g. SITE_ENGINEER or ADMIN).' } },
-            { element: '#registry-table-card', popover: { title: 'Users list', description: 'All registered users. Each row shows name, email, role, and creation date.' } },
-            { element: '#registry-table-actions-hint', popover: { title: 'Managing users', description: 'Role: change a user\'s role from the dropdown, then click Save. Reset password: set a new password for a user. Delete: remove the user (use with care). Only admins can edit; you cannot change your own role. Press Escape to close any modal.' } },
+            { element: '#registry-table-card', popover: { title: 'Users list', description: 'All registered users. Each row shows user, email, role, status (Active/Inactive), and creation date.' } },
+            { element: '#registry-table-actions-hint', popover: { title: 'Managing users', description: 'Profile picture: use the camera icon to set or change a user\'s profile picture. Status: use the activate/deactivate icon next to Active/Inactive to enable or disable login (e.g. when they leave). Role: change from the dropdown, then click Save. Reset password: set a new password. Delete: remove the user (use with care). Only admins can edit; you cannot change your own role. Press Escape to close any modal.' } },
         ]
         const driverObj = driver({
             showProgress: true,
@@ -211,6 +343,14 @@ export default function Registry() {
 
     return (
         <div>
+            <input
+                ref={avatarFileInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp"
+                onChange={handleAvatarFileChange}
+                className="registry-avatar-input"
+                aria-hidden
+            />
             <div id="registry-header" className="page-header">
                 <div className="page-header-info">
                     <h1>User Registry</h1>
@@ -279,6 +419,7 @@ export default function Registry() {
                                     <th>User</th>
                                     <th>Email</th>
                                     <th>Role</th>
+                                    <th>Status</th>
                                     <th>Created</th>
                                     <th>Actions</th>
                                 </tr>
@@ -286,7 +427,7 @@ export default function Registry() {
                             <tbody>
                                 {filteredUsers.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                                        <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                                             No users found.
                                         </td>
                                     </tr>
@@ -300,7 +441,7 @@ export default function Registry() {
                                         <tr key={u.id}>
                                             <td>
                                                 <div className="registry-user-cell">
-                                                    <Avatar userId={u.id} name={u.name} size="sm" />
+                                                    <Avatar key={`avatar-${u.id}-${avatarVersion[u.id] ?? 0}`} userId={u.id} name={u.name} size="sm" skipImage={!u.avatar_path} />
                                                     <span style={{ fontWeight: 500 }}>{u.name}</span>
                                                 </div>
                                             </td>
@@ -325,9 +466,51 @@ export default function Registry() {
                                                     ))}
                                                 </select>
                                             </td>
+                                            <td>
+                                                <div className="registry-status-cell">
+                                                    <span className={`registry-status-badge ${u.active !== false ? 'registry-status-active' : 'registry-status-inactive'}`}>
+                                                        {u.active !== false ? 'Active' : 'Inactive'}
+                                                    </span>
+                                                    {isAdmin && !isSelf && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn-icon"
+                                                            title={busy ? 'Updating…' : (u.active !== false ? 'Deactivate user' : 'Activate user')}
+                                                            disabled={busy}
+                                                            onClick={() => handleSetActive(u, u.active === false)}
+                                                        >
+                                                            {u.active !== false ? <UserX size={16} /> : <UserCheck size={16} />}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
                                             <td>{u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
                                             <td>
                                                 <div className="actions">
+                                                    <button
+                                                        type="button"
+                                                        className="btn-icon"
+                                                        title={avatarUploadingId === u.id ? 'Uploading…' : 'Upload profile picture'}
+                                                        disabled={!isAdmin || busy || avatarUploadingId === u.id || avatarRemovingId === u.id}
+                                                        onClick={() => triggerAvatarUpload(u)}
+                                                    >
+                                                        <Camera size={16} />
+                                                    </button>
+                                                    {isAdmin && u.avatar_path && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn-icon"
+                                                            title={avatarRemovingId === u.id ? 'Removing…' : 'Remove profile picture'}
+                                                            disabled={busy || avatarUploadingId === u.id || avatarRemovingId === u.id}
+                                                            onClick={() => openRemoveAvatarModal(u)}
+                                                        >
+                                                            {avatarRemovingId === u.id ? (
+                                                                <Loader2 className="spin" size={16} />
+                                                            ) : (
+                                                                <ImageMinus size={16} />
+                                                            )}
+                                                        </button>
+                                                    )}
                                                     <button
                                                         type="button"
                                                         className="btn-icon"
@@ -368,14 +551,26 @@ export default function Registry() {
             </div>
 
             {showAddModal && (
-                <div className="modal-overlay" onClick={() => !addLoading && setShowAddModal(false)}>
+                <div className="modal-overlay" onClick={() => {
+                    if (!addLoading) {
+                        setAddFormAvatarFile(null)
+                        addFormAvatarInputRef.current && (addFormAvatarInputRef.current.value = '')
+                        setShowAddModal(false)
+                    }
+                }}>
                     <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px' }}>
                         <div className="modal-header">
                             <h2 style={{ margin: 0, fontSize: 'var(--font-lg)' }}>Add user</h2>
                             <button
                                 type="button"
                                 className="btn-icon"
-                                onClick={() => !addLoading && setShowAddModal(false)}
+                                onClick={() => {
+                                    if (!addLoading) {
+                                        setAddFormAvatarFile(null)
+                                        addFormAvatarInputRef.current && (addFormAvatarInputRef.current.value = '')
+                                        setShowAddModal(false)
+                                    }
+                                }}
                                 aria-label="Close"
                             >
                                 <X size={20} />
@@ -429,21 +624,91 @@ export default function Registry() {
                                         ))}
                                     </select>
                                 </label>
+                                <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                                    <span className="form-label">Profile picture (optional)</span>
+                                    <input
+                                        ref={addFormAvatarInputRef}
+                                        type="file"
+                                        accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp"
+                                        onChange={(e) => setAddFormAvatarFile(e.target.files?.[0] ?? null)}
+                                        className="form-input"
+                                    />
+                                </label>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', padding: 'var(--space-4)', borderTop: '1px solid var(--border)' }}>
                                 <button
                                     type="button"
                                     className="btn btn-secondary"
-                                    onClick={() => setShowAddModal(false)}
+                                    onClick={() => {
+                                        setAddFormAvatarFile(null)
+                                        addFormAvatarInputRef.current && (addFormAvatarInputRef.current.value = '')
+                                        setShowAddModal(false)
+                                    }}
                                     disabled={addLoading}
                                 >
                                     Cancel
                                 </button>
                                 <button type="submit" className="btn btn-primary" disabled={addLoading}>
-                                    {addLoading ? 'Adding…' : 'Add user'}
+                                    {addLoading ? 'Adding user…' : 'Add user'}
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {showRemoveAvatarModal && removeAvatarTarget && (
+                <div className="modal-overlay" onClick={() => {
+                    if (!avatarRemovingId) {
+                        setShowRemoveAvatarModal(false)
+                        setRemoveAvatarTarget(null)
+                    }
+                }}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+                        <div className="modal-header">
+                            <h2 style={{ margin: 0, fontSize: 'var(--font-lg)' }}>Remove profile picture</h2>
+                            <button
+                                type="button"
+                                className="btn-icon"
+                                onClick={() => !avatarRemovingId && (setShowRemoveAvatarModal(false), setRemoveAvatarTarget(null))}
+                                aria-label="Close"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div style={{ padding: 'var(--space-4)' }}>
+                            <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                                Remove the profile picture for <strong>{removeAvatarTarget.name}</strong>? The avatar will revert to initials.
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', padding: 'var(--space-4)', borderTop: '1px solid var(--border)' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setShowRemoveAvatarModal(false)
+                                    setRemoveAvatarTarget(null)
+                                }}
+                                disabled={!!avatarRemovingId}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleRemoveAvatarConfirm}
+                                disabled={!!avatarRemovingId}
+                            >
+                                {avatarRemovingId ? (
+                                    <>
+                                        <Loader2 className="spin" size={16} style={{ marginRight: 'var(--space-2)' }} />
+                                        Removing…
+                                    </>
+                                ) : (
+                                    'Remove picture'
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -12,11 +12,13 @@ type Repository interface {
 	CreateUser(ctx context.Context, user *models.User) error
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	GetUserByID(ctx context.Context, id string) (*models.User, error)
-	ListUsers(ctx context.Context, roleFilter string) ([]models.User, error)
+	ListUsers(ctx context.Context, roleFilter string, activeOnly *bool) ([]models.User, error)
 	UpdateUserRole(ctx context.Context, id string, role models.Role) (*models.User, error)
 	UpdateUserPasswordHash(ctx context.Context, id string, passwordHash string) (*models.User, error)
 	UpdateProfile(ctx context.Context, id string, name, email, phone string) (*models.User, error)
 	UpdateAvatarPath(ctx context.Context, userID, path string) (*models.User, error)
+	ClearAvatarPath(ctx context.Context, userID string) (*models.User, error)
+	UpdateUserActive(ctx context.Context, userID string, active bool) (*models.User, error)
 	DeleteUser(ctx context.Context, id string) error
 }
 
@@ -50,11 +52,14 @@ func (r *repository) GetUserByID(ctx context.Context, id string) (*models.User, 
 	return &user, nil
 }
 
-func (r *repository) ListUsers(ctx context.Context, roleFilter string) ([]models.User, error) {
+func (r *repository) ListUsers(ctx context.Context, roleFilter string, activeOnly *bool) ([]models.User, error) {
 	var users []models.User
 	query := r.db.WithContext(ctx).Model(&models.User{}).Order("created_at DESC")
 	if roleFilter != "" {
 		query = query.Where("role = ?", roleFilter)
+	}
+	if activeOnly != nil {
+		query = query.Where("active = ?", *activeOnly)
 	}
 	err := query.Find(&users).Error
 	return users, err
@@ -104,6 +109,30 @@ func (r *repository) UpdateAvatarPath(ctx context.Context, userID, path string) 
 		return nil, err
 	}
 	user.AvatarPath = path
+	if err := r.db.WithContext(ctx).Save(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *repository) ClearAvatarPath(ctx context.Context, userID string) (*models.User, error) {
+	var user models.User
+	if err := r.db.WithContext(ctx).Where("id = ?", userID).First(&user).Error; err != nil {
+		return nil, err
+	}
+	user.AvatarPath = ""
+	if err := r.db.WithContext(ctx).Save(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *repository) UpdateUserActive(ctx context.Context, userID string, active bool) (*models.User, error) {
+	var user models.User
+	if err := r.db.WithContext(ctx).Where("id = ?", userID).First(&user).Error; err != nil {
+		return nil, err
+	}
+	user.Active = active
 	if err := r.db.WithContext(ctx).Save(&user).Error; err != nil {
 		return nil, err
 	}
