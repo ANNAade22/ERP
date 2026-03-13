@@ -10,6 +10,7 @@
   --sidebar-text: #c7d2fe;
   --sidebar-text-active: #ffffff;
   --sidebar-width: 240px;
+  --sidebar-width-collapsed: 64px;
   --sidebar-accent: #6366f1;
 
   /* Primary Colors */
@@ -41,7 +42,7 @@
   --text-muted: #94a3b8;
 
   /* Typography */
-  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-xs: 0.75rem;
   --font-sm: 0.8125rem;
   --font-base: 0.875rem;
@@ -80,6 +81,12 @@
 
   /* Header */
   --header-height: 56px;
+
+  /* Card accent colors (Info / Highlight) */
+  --card-emerald: #10B981;
+  --card-emerald-bg: rgba(16, 185, 129, 0.08);
+  --card-amber: #F59E0B;
+  --card-amber-bg: rgba(245, 158, 11, 0.08);
 }
 
 /* ---------- Reset & Base ---------- */
@@ -95,6 +102,16 @@ html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide scrollbars across the app while keeping scroll behavior */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
 }
 
 body {
@@ -149,6 +166,10 @@ img {
   transition: margin-left var(--transition-base);
 }
 
+.app-layout[data-sidebar-collapsed] .main-area {
+  margin-left: var(--sidebar-width-collapsed);
+}
+
 .main-content {
   flex: 1;
   padding: var(--space-8);
@@ -172,12 +193,22 @@ img {
   overflow-x: hidden;
 }
 
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
 .sidebar-logo {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-6) var(--space-5);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex: 1;
+  min-width: 0;
 }
 
 .sidebar-logo-icon {
@@ -331,6 +362,54 @@ img {
 .sidebar-subitem.active::before {
   opacity: 1;
   background: var(--sidebar-accent);
+}
+
+/* Sidebar collapsed state */
+.sidebar.collapsed {
+  width: var(--sidebar-width-collapsed);
+}
+
+.sidebar.collapsed .sidebar-logo-text,
+.sidebar.collapsed .sidebar-menu-label,
+.sidebar.collapsed .sidebar-item > span:not(.sidebar-item-icon),
+.sidebar.collapsed .sidebar-item-chevron,
+.sidebar.collapsed .sidebar-submenu {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-top {
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.sidebar.collapsed .sidebar-top .sidebar-logo {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-item {
+  justify-content: center;
+  padding: var(--space-3);
+}
+
+.sidebar.collapsed .sidebar-item::before {
+  display: none;
+}
+
+.sidebar-toggle {
+  flex-shrink: 0;
+  padding: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--sidebar-text);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebar-toggle:hover {
+  background: var(--sidebar-bg-hover);
+  color: var(--sidebar-text-active);
 }
 
 /* ---------- Header ---------- */
@@ -618,6 +697,21 @@ img {
   box-shadow: var(--shadow-md);
 }
 
+/* Card alternating colors: 1,3 = Emerald; 2,4 = Amber */
+.stat-cards .stat-card:nth-child(4n+1),
+.stat-cards .stat-card:nth-child(4n+3) {
+  background: var(--card-emerald-bg);
+  border-color: rgba(16, 185, 129, 0.25);
+  border-left: 3px solid var(--card-emerald);
+}
+
+.stat-cards .stat-card:nth-child(4n+2),
+.stat-cards .stat-card:nth-child(4n+4) {
+  background: var(--card-amber-bg);
+  border-color: rgba(245, 158, 11, 0.25);
+  border-left: 3px solid var(--card-amber);
+}
+
 .stat-card-header {
   display: flex;
   align-items: center;
@@ -673,6 +767,20 @@ img {
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   margin-bottom: var(--space-6);
+}
+
+.main-content > .content-card:nth-child(4n+1),
+.main-content > .content-card:nth-child(4n+3) {
+  background: var(--card-emerald-bg);
+  border-color: rgba(16, 185, 129, 0.25);
+  border-left: 3px solid var(--card-emerald);
+}
+
+.main-content > .content-card:nth-child(4n+2),
+.main-content > .content-card:nth-child(4n+4) {
+  background: var(--card-amber-bg);
+  border-color: rgba(245, 158, 11, 0.25);
+  border-left: 3px solid var(--card-amber);
 }
 
 .content-card-header {
@@ -821,6 +929,20 @@ img {
   grid-template-columns: repeat(3, 1fr);
 }
 
+.cards-grid .content-card:nth-child(4n+1),
+.cards-grid .content-card:nth-child(4n+3) {
+  background: var(--card-emerald-bg);
+  border-color: rgba(16, 185, 129, 0.25);
+  border-left: 3px solid var(--card-emerald);
+}
+
+.cards-grid .content-card:nth-child(4n+2),
+.cards-grid .content-card:nth-child(4n+4) {
+  background: var(--card-amber-bg);
+  border-color: rgba(245, 158, 11, 0.25);
+  border-left: 3px solid var(--card-amber);
+}
+
 /* ---------- Project Card ---------- */
 .project-card {
   background: var(--surface);
@@ -832,6 +954,20 @@ img {
 
 .project-card:hover {
   box-shadow: var(--shadow-md);
+}
+
+.cards-grid .project-card:nth-child(4n+1),
+.cards-grid .project-card:nth-child(4n+3) {
+  background: var(--card-emerald-bg);
+  border-color: rgba(16, 185, 129, 0.25);
+  border-left: 3px solid var(--card-emerald);
+}
+
+.cards-grid .project-card:nth-child(4n+2),
+.cards-grid .project-card:nth-child(4n+4) {
+  background: var(--card-amber-bg);
+  border-color: rgba(245, 158, 11, 0.25);
+  border-left: 3px solid var(--card-amber);
 }
 
 .project-card-header {
@@ -937,6 +1073,20 @@ img {
 
 .vendor-card:hover {
   box-shadow: var(--shadow-md);
+}
+
+.cards-grid .vendor-card:nth-child(4n+1),
+.cards-grid .vendor-card:nth-child(4n+3) {
+  background: var(--card-emerald-bg);
+  border-color: rgba(16, 185, 129, 0.25);
+  border-left: 3px solid var(--card-emerald);
+}
+
+.cards-grid .vendor-card:nth-child(4n+2),
+.cards-grid .vendor-card:nth-child(4n+4) {
+  background: var(--card-amber-bg);
+  border-color: rgba(245, 158, 11, 0.25);
+  border-left: 3px solid var(--card-amber);
 }
 
 .vendor-card-header {
@@ -1153,6 +1303,20 @@ img {
   box-shadow: var(--shadow-md);
 }
 
+.equipment-card:nth-child(4n+1),
+.equipment-card:nth-child(4n+3) {
+  background: var(--card-emerald-bg);
+  border-color: rgba(16, 185, 129, 0.25);
+  border-left: 3px solid var(--card-emerald);
+}
+
+.equipment-card:nth-child(4n+2),
+.equipment-card:nth-child(4n+4) {
+  background: var(--card-amber-bg);
+  border-color: rgba(245, 158, 11, 0.25);
+  border-left: 3px solid var(--card-amber);
+}
+
 .equipment-card-header {
   display: flex;
   align-items: flex-start;
@@ -1213,6 +1377,20 @@ img {
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   margin-bottom: var(--space-4);
+}
+
+.budget-project-card:nth-child(4n+1),
+.budget-project-card:nth-child(4n+3) {
+  background: var(--card-emerald-bg);
+  border-color: rgba(16, 185, 129, 0.25);
+  border-left: 3px solid var(--card-emerald);
+}
+
+.budget-project-card:nth-child(4n+2),
+.budget-project-card:nth-child(4n+4) {
+  background: var(--card-amber-bg);
+  border-color: rgba(245, 158, 11, 0.25);
+  border-left: 3px solid var(--card-amber);
 }
 
 .budget-project-header {
@@ -1425,6 +1603,20 @@ img {
 
 .maintenance-card:last-child {
   border-bottom: none;
+}
+
+.maintenance-card:nth-child(4n+1),
+.maintenance-card:nth-child(4n+3) {
+  background: var(--card-emerald-bg);
+  border-left: 3px solid var(--card-emerald);
+  padding-left: var(--space-4);
+}
+
+.maintenance-card:nth-child(4n+2),
+.maintenance-card:nth-child(4n+4) {
+  background: var(--card-amber-bg);
+  border-left: 3px solid var(--card-amber);
+  padding-left: var(--space-4);
 }
 
 .maintenance-card-header {

@@ -11,6 +11,8 @@ import {
     ChevronDown,
     ClipboardCheck,
     UserCog,
+    PanelLeftClose,
+    PanelLeft,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -108,7 +110,12 @@ function canSeeMenuItem(item: MenuItem, role: string | undefined): boolean {
     return item.roles.includes(role as Role)
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+    collapsed: boolean
+    onToggleCollapsed: () => void
+}
+
+export default function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
     const { user } = useAuth()
     const location = useLocation()
     const navigate = useNavigate()
@@ -128,6 +135,14 @@ export default function Sidebar() {
     }
 
     const handleClick = (item: MenuItem) => {
+        if (collapsed) {
+            if (item.children) {
+                onToggleCollapsed()
+            } else if (item.path) {
+                navigate(item.path)
+            }
+            return
+        }
         if (item.children) {
             toggleExpand(item.label)
         } else if (item.path) {
@@ -136,14 +151,24 @@ export default function Sidebar() {
     }
 
     return (
-        <aside className="sidebar">
-            {/* Logo */}
-            <div className="sidebar-logo">
-                <img src="/Logo.png" alt="Silverline LTD" className="sidebar-logo-img" />
-                <div className="sidebar-logo-text">
-                    <h1>Silverline LTD</h1>
-                    <span>ERP</span>
+        <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+            {/* Logo + Toggle (top) */}
+            <div className="sidebar-top">
+                <div className="sidebar-logo">
+                    <img src="/Logo.png" alt="Silverline LTD" className="sidebar-logo-img" />
+                    <div className="sidebar-logo-text">
+                        <h1>Silverline LTD</h1>
+                        <span>ERP</span>
+                    </div>
                 </div>
+                <button
+                    type="button"
+                    className="sidebar-toggle"
+                    onClick={onToggleCollapsed}
+                    aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                >
+                    {collapsed ? <PanelLeft size={20} /> : <PanelLeftClose size={20} />}
+                </button>
             </div>
 
             {/* Menu Label */}
