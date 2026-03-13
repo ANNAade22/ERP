@@ -4,6 +4,7 @@ import {
     CircleCheck,
     Clock,
     Eye,
+    FileText,
     PackageCheck,
     Pencil,
     Plus,
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react'
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
+import { useNavigate } from 'react-router-dom'
 import api from '../../utils/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -132,6 +134,10 @@ function canOrder(role?: string) {
     return role === 'ADMIN' || role === 'STORE_OFFICER'
 }
 
+function canCreateInvoice(role?: string) {
+    return role === 'ADMIN' || role === 'PROJECT_MANAGER' || role === 'ACCOUNTANT'
+}
+
 function getAllowedStatusActions(role: string | undefined, currentStatus: string) {
     const s = (currentStatus || '').toUpperCase()
     if (s === 'PENDING' && canApprove(role)) return ['APPROVED', 'REJECTED']
@@ -142,6 +148,7 @@ function getAllowedStatusActions(role: string | undefined, currentStatus: string
 
 export default function MaterialRequests() {
     const { user } = useAuth()
+    const navigate = useNavigate()
     const [requests, setRequests] = useState<PurchaseRequest[]>([])
     const [projects, setProjects] = useState<ProjectOption[]>([])
     const [vendors, setVendors] = useState<VendorOption[]>([])
@@ -577,6 +584,15 @@ export default function MaterialRequests() {
                                                         {nextStatus === 'RECEIVED' && <PackageCheck size={16} />}
                                                     </button>
                                                 ))}
+                                                {canCreateInvoice(user?.role) && (req.status === 'ORDERED' || req.status === 'RECEIVED') && (
+                                                    <button
+                                                        className="btn-icon"
+                                                        title="Create Invoice from this order (opens Invoices & Payments with vendor, project, and amount pre-filled)"
+                                                        onClick={() => navigate('/finance/invoices-payments', { state: { purchaseRequest: { id: req.id, vendor_id: req.vendor_id, project_id: req.project_id, total_price: req.total_price || 0 } } })}
+                                                    >
+                                                        <FileText size={16} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

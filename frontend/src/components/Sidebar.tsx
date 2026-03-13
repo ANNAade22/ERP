@@ -84,6 +84,7 @@ const menuItems: MenuItem[] = [
             { label: 'Cash Flow', path: '/finance/cash-flow' },
             { label: 'Profitability', path: '/finance/profitability' },
             { label: 'Overrun Alerts', path: '/finance/overrun-alerts' },
+            { label: 'Invoices & Payments', path: '/finance/invoices-payments' },
         ],
         roles: ['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT'],
     },
@@ -138,10 +139,10 @@ export default function Sidebar() {
         <aside className="sidebar">
             {/* Logo */}
             <div className="sidebar-logo">
-                <img src="/Logo.png" alt="" className="sidebar-logo-img" />
+                <img src="/Logo.png" alt="Silverline LTD" className="sidebar-logo-img" />
                 <div className="sidebar-logo-text">
-                    <h1>Silverline</h1>
-                    <span>Admin Dashboard</span>
+                    <h1>Silverline LTD</h1>
+                    <span>ERP</span>
                 </div>
             </div>
 

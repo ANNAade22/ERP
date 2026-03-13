@@ -13,6 +13,7 @@ import (
 	"erp-project/internal/expenses"
 	"erp-project/internal/finance"
 	"erp-project/internal/inventory"
+	"erp-project/internal/invoices"
 	"erp-project/internal/models"
 	"erp-project/internal/procurement"
 	"erp-project/internal/projects"
@@ -97,6 +98,9 @@ func main() {
 	equipmentHandler := equipment.NewHandler(equipmentService)
 	financeService := finance.NewService(db)
 	financeHandler := finance.NewHandler(financeService)
+	invoiceRepo := invoices.NewRepository(db)
+	invoiceService := invoices.NewService(db, invoiceRepo)
+	invoiceHandler := invoices.NewHandler(invoiceService, uploadDir)
 
 	// Setup Gin Router
 	r := gin.Default()
@@ -226,6 +230,18 @@ func main() {
 
 			// Dashboard
 			protected.GET("/dashboard", dashboardHandler.GetDashboard)
+
+			// Invoices & Payments (role-protected: ADMIN, PROJECT_MANAGER, ACCOUNTANT)
+			invoiceGroup := protected.Group("/invoices")
+			invoiceGroup.Use(middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager, models.RoleAccountant))
+			{
+				invoiceGroup.GET("", invoiceHandler.ListInvoices)
+				invoiceGroup.GET("/for-payment", invoiceHandler.GetInvoicesForPayment)
+				invoiceGroup.POST("", invoiceHandler.CreateInvoice)
+				invoiceGroup.GET("/:id", invoiceHandler.GetInvoice)
+				invoiceGroup.GET("/:id/download", invoiceHandler.DownloadInvoice)
+				invoiceGroup.POST("/:id/payments", invoiceHandler.RecordPayment)
+			}
 
 			// Finance (role-protected: ADMIN, PROJECT_MANAGER, ACCOUNTANT)
 			financeGroup := protected.Group("/finance")

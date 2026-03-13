@@ -14,6 +14,7 @@ import BudgetTracker from './pages/finance/BudgetTracker'
 import CashFlow from './pages/finance/CashFlow'
 import Profitability from './pages/finance/Profitability'
 import OverrunAlerts from './pages/finance/OverrunAlerts'
+import InvoicesPayments from './pages/finance/InvoicesPayments'
 import Settings from './pages/Settings'
 import Attendance from './pages/Attendance'
 import Registry from './pages/Registry'
@@ -76,6 +77,7 @@ function App() {
                 <Route path="finance/cash-flow" element={<RoleProtectedRoute allowedRoles={['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT']}><CashFlow /></RoleProtectedRoute>} />
                 <Route path="finance/profitability" element={<RoleProtectedRoute allowedRoles={['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT']}><Profitability /></RoleProtectedRoute>} />
                 <Route path="finance/overrun-alerts" element={<RoleProtectedRoute allowedRoles={['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT']}><OverrunAlerts /></RoleProtectedRoute>} />
+                <Route path="finance/invoices-payments" element={<RoleProtectedRoute allowedRoles={['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT']}><InvoicesPayments /></RoleProtectedRoute>} />
                 <Route path="attendance" element={<RoleProtectedRoute allowedRoles={['ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER']}><Attendance /></RoleProtectedRoute>} />
                 <Route path="registry" element={<RoleProtectedRoute allowedRoles={['ADMIN']}><Registry /></RoleProtectedRoute>} />
                 <Route path="settings" element={<Settings />} />

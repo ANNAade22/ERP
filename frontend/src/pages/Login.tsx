@@ -5,7 +5,7 @@ import api from '../utils/api'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
 const LOGO_URL = '/Logo.png'
-const BRAND_NAME = 'Silverline'
+const BRAND_NAME = 'Silverline LTD'
 
 export default function Login() {
     const navigate = useNavigate()

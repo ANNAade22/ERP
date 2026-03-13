@@ -106,6 +106,7 @@ export default function FinanceIndex() {
         { label: 'Cash Flow', path: '/finance/cash-flow', description: 'Inflows and outflows by month' },
         { label: 'Profitability', path: '/finance/profitability', description: 'Revenue, costs, margins' },
         { label: 'Overrun Alerts', path: '/finance/overrun-alerts', description: 'Projects exceeding budget' },
+        { label: 'Invoices & Payments', path: '/finance/invoices-payments', description: 'Manage vendor invoices and payments' },
     ]
 
     return (
