@@ -58,7 +58,7 @@ func (r *repository) Create(ctx context.Context, expense *models.Expense) error 
 
 func (r *repository) GetByID(ctx context.Context, id string) (*models.Expense, error) {
 	var expense models.Expense
-	err := r.db.WithContext(ctx).Preload("Project").Preload("Creator").Where("id = ?", id).First(&expense).Error
+	err := r.db.WithContext(ctx).Preload("Project").Preload("Vendor").Preload("Creator").Where("id = ?", id).First(&expense).Error
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (r *repository) GetByID(ctx context.Context, id string) (*models.Expense, e
 func (r *repository) GetByProject(ctx context.Context, projectID string) ([]models.Expense, error) {
 	var expenses []models.Expense
 	err := r.db.WithContext(ctx).
-		Preload("Creator").
+		Preload("Creator").Preload("Vendor").
 		Where("project_id = ?", projectID).
 		Order("date DESC").
 		Find(&expenses).Error
@@ -78,7 +78,7 @@ func (r *repository) GetByProject(ctx context.Context, projectID string) ([]mode
 func (r *repository) GetByProjectAndDateRange(ctx context.Context, projectID string, from, to time.Time) ([]models.Expense, error) {
 	var expenses []models.Expense
 	err := r.db.WithContext(ctx).
-		Preload("Creator").
+		Preload("Creator").Preload("Vendor").
 		Where("project_id = ? AND date BETWEEN ? AND ?", projectID, from, to).
 		Order("date DESC").
 		Find(&expenses).Error

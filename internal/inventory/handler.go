@@ -51,6 +51,20 @@ func (h *Handler) GetMaterialsByProject(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Materials retrieved successfully", materials)
 }
 
+// DeleteMaterial handles DELETE /api/v1/inventory/materials/:id
+func (h *Handler) DeleteMaterial(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.service.DeleteMaterial(c.Request.Context(), id); err != nil {
+		if errors.Is(err, ErrMaterialNotFound) {
+			utils.ErrorResponse(c, http.StatusNotFound, "Material not found")
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to delete material")
+		return
+	}
+	utils.SuccessResponse(c, http.StatusOK, "Material deleted successfully", nil)
+}
+
 // GetMaterial handles GET /api/v1/inventory/materials/:id
 func (h *Handler) GetMaterial(c *gin.Context) {
 	id := c.Param("id")

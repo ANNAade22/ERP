@@ -18,6 +18,7 @@ var (
 
 type CreateExpenseRequest struct {
 	ProjectID   string                 `json:"project_id" binding:"required"`
+	VendorID    *string                `json:"vendor_id"`
 	Category    models.ExpenseCategory `json:"category" binding:"required"`
 	Amount      float64                `json:"amount" binding:"required,gt=0"`
 	Description string                 `json:"description"`
@@ -57,6 +58,7 @@ func (s *service) CreateExpense(ctx context.Context, req CreateExpenseRequest, c
 
 	expense := &models.Expense{
 		ProjectID:   req.ProjectID,
+		VendorID:    req.VendorID,
 		Category:    req.Category,
 		Amount:      req.Amount,
 		Description: req.Description,

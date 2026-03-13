@@ -40,6 +40,7 @@ type StockOutRequest struct {
 
 type Service interface {
 	CreateMaterial(ctx context.Context, req CreateMaterialRequest) (*models.Material, error)
+	DeleteMaterial(ctx context.Context, id string) error
 	GetMaterialsByProject(ctx context.Context, projectID string) ([]models.Material, error)
 	GetMaterialByID(ctx context.Context, id string) (*models.Material, error)
 	StockIn(ctx context.Context, req StockInRequest, performedBy string) (*models.StockMovement, error)
@@ -71,6 +72,14 @@ func (s *service) CreateMaterial(ctx context.Context, req CreateMaterialRequest)
 	}
 
 	return s.repo.GetMaterialByID(ctx, material.ID)
+}
+
+func (s *service) DeleteMaterial(ctx context.Context, id string) error {
+	_, err := s.repo.GetMaterialByID(ctx, id)
+	if err != nil {
+		return ErrMaterialNotFound
+	}
+	return s.repo.DeleteMaterial(ctx, id)
 }
 
 func (s *service) GetMaterialsByProject(ctx context.Context, projectID string) ([]models.Material, error) {

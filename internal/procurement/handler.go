@@ -38,9 +38,11 @@ func (h *Handler) CreateVendor(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusCreated, "Vendor created successfully", vendor)
 }
 
-// GetAllVendors handles GET /api/v1/vendors
+// GetAllVendors handles GET /api/v1/vendors?include_inactive=true&q=...
 func (h *Handler) GetAllVendors(c *gin.Context) {
-	vendors, err := h.service.GetAllVendors(c.Request.Context())
+	includeInactive := c.Query("include_inactive") == "true" || c.Query("include_inactive") == "1"
+	searchQ := c.Query("q")
+	vendors, err := h.service.GetAllVendors(c.Request.Context(), includeInactive, searchQ)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve vendors")
 		return
@@ -87,6 +89,39 @@ func (h *Handler) UpdateVendor(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Vendor updated successfully", vendor)
+}
+
+// DeleteVendor handles DELETE /api/v1/vendors/:id
+func (h *Handler) DeleteVendor(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Vendor ID is required")
+		return
+	}
+	if err := h.service.DeleteVendor(c.Request.Context(), id); err != nil {
+		if errors.Is(err, ErrVendorNotFound) {
+			utils.ErrorResponse(c, http.StatusNotFound, "Vendor not found")
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to delete vendor")
+		return
+	}
+	utils.SuccessResponse(c, http.StatusOK, "Vendor deleted successfully", nil)
+}
+
+// GetVendorsByProject handles GET /api/v1/projects/:id/vendors
+func (h *Handler) GetVendorsByProject(c *gin.Context) {
+	projectID := c.Param("id")
+	if projectID == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Project ID is required")
+		return
+	}
+	vendors, err := h.service.GetVendorsByProject(c.Request.Context(), projectID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve project vendors")
+		return
+	}
+	utils.SuccessResponse(c, http.StatusOK, "Project vendors retrieved", vendors)
 }
 
 // --- Purchase Request endpoints ---

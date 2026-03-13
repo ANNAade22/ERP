@@ -1,8 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { MapPin, Calendar, Users, DollarSign, GanttChart, Camera, ArrowLeft, Loader2 } from 'lucide-react';
+import { MapPin, Calendar, Users, DollarSign, GanttChart, Camera, ArrowLeft, Loader2, Truck } from 'lucide-react';
 import api from '../../utils/api';
 import AuthImage from '../../components/AuthImage';
+
+interface ProjectVendorSummary {
+  vendor_id: string;
+  vendor_name: string;
+  pr_count: number;
+  total_value: number;
+}
 
 interface Project {
   id: string;
@@ -58,6 +65,7 @@ export default function ProjectDetail() {
   const [project, setProject] = useState<Project | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [photos, setPhotos] = useState<SitePhoto[]>([]);
+  const [projectVendors, setProjectVendors] = useState<ProjectVendorSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,19 +76,24 @@ export default function ProjectDetail() {
       setLoading(true);
       setError(null);
       try {
-        const [projRes, milestonesRes, photosRes] = await Promise.all([
+        const [projRes, milestonesRes, photosRes, vendorsRes] = await Promise.all([
           api.get(`/projects/${id}`),
           api.get(`/projects/${id}/milestones`),
           api.get(`/projects/${id}/photos`),
+          api.get(`/projects/${id}/vendors`).catch(() => ({ data: { success: false, data: [] } })),
         ]);
         if (cancelled) return;
         const projData = projRes.data as { success?: boolean; data?: Project };
-        const msList = Array.isArray(milestonesRes.data) ? milestonesRes.data : [];
+        const msRaw = milestonesRes.data as { success?: boolean; data?: Milestone[] } | Milestone[];
+        const msList = Array.isArray(msRaw) ? msRaw : msRaw?.data ?? [];
         const phRaw = photosRes.data as { success?: boolean; data?: SitePhoto[] } | SitePhoto[];
         const phList = Array.isArray(phRaw) ? phRaw : phRaw?.data ?? [];
+        const venRaw = vendorsRes?.data as { success?: boolean; data?: ProjectVendorSummary[] };
+        const venList = Array.isArray(venRaw?.data) ? venRaw.data : [];
         setProject(projData.success ? projData.data ?? null : null);
         setMilestones(msList);
         setPhotos(phList);
+        setProjectVendors(venList);
         if (!projData.success || !projData.data) setError('Project not found');
       } catch (e) {
         if (!cancelled) {
@@ -88,6 +101,7 @@ export default function ProjectDetail() {
           setProject(null);
           setMilestones([]);
           setPhotos([]);
+          setProjectVendors([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -187,6 +201,33 @@ export default function ProjectDetail() {
           <div><span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>Start</span><div>{formatDate(project.start_date)}</div></div>
           <div><span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)' }}>End</span><div>{formatDate(project.end_date)}</div></div>
         </div>
+      </div>
+
+      <div className="content-card" style={{ marginBottom: 'var(--space-6)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}><Truck size={20} /> Vendors on this project</h2>
+          <Link to="/vendors/contractors" className="btn btn-secondary" style={{ fontSize: 'var(--font-sm)' }}>Manage vendors</Link>
+        </div>
+        {projectVendors.length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)' }}>No vendors linked to this project yet. Vendors are added when you assign them to material purchase requests.</p>
+        ) : (
+          <div className="data-table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr><th>Vendor</th><th>Purchase requests</th><th>Total value</th></tr>
+              </thead>
+              <tbody>
+                {projectVendors.map((v) => (
+                  <tr key={v.vendor_id}>
+                    <td>{v.vendor_name}</td>
+                    <td>{v.pr_count}</td>
+                    <td>${(v.total_value ?? 0).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="content-card" style={{ marginBottom: 'var(--space-6)' }}>

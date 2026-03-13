@@ -145,6 +145,7 @@ func main() {
 				projectGroup.GET("", projectHandler.GetAllProjects)
 
 				// Sub-resources under /projects/:id (must be before GET/PUT/DELETE /:id)
+				projectGroup.GET("/:id/vendors", procurementHandler.GetVendorsByProject)
 				projectGroup.GET("/:id/milestones", milestoneHandler.GetProjectMilestones)
 				projectGroup.POST("/:id/milestones", middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager), milestoneHandler.CreateMilestone)
 				projectGroup.GET("/:id/workers", attendanceHandler.GetWorkersByProject)
@@ -190,6 +191,7 @@ func main() {
 				vendorGroup.GET("", procurementHandler.GetAllVendors)
 				vendorGroup.GET("/:id", procurementHandler.GetVendor)
 				vendorGroup.PUT("/:id", middleware.RoleMiddleware(models.RoleAdmin, models.RoleStoreOfficer), procurementHandler.UpdateVendor)
+				vendorGroup.DELETE("/:id", middleware.RoleMiddleware(models.RoleAdmin, models.RoleStoreOfficer), procurementHandler.DeleteVendor)
 			}
 
 			// Procurement
@@ -215,6 +217,7 @@ func main() {
 				inventoryGroup.POST("/materials", middleware.RoleMiddleware(models.RoleStoreOfficer, models.RoleAdmin), inventoryHandler.CreateMaterial)
 				inventoryGroup.GET("/materials", inventoryHandler.GetMaterialsByProject)
 				inventoryGroup.GET("/materials/:id", inventoryHandler.GetMaterial)
+				inventoryGroup.DELETE("/materials/:id", middleware.RoleMiddleware(models.RoleStoreOfficer, models.RoleAdmin), inventoryHandler.DeleteMaterial)
 				inventoryGroup.POST("/stock-in", middleware.RoleMiddleware(models.RoleStoreOfficer, models.RoleAdmin), inventoryHandler.StockIn)
 				inventoryGroup.POST("/stock-out", middleware.RoleMiddleware(models.RoleStoreOfficer, models.RoleAdmin), inventoryHandler.StockOut)
 				inventoryGroup.GET("/movements/:materialId", inventoryHandler.GetStockMovements)
@@ -234,6 +237,7 @@ func main() {
 				financeGroup.GET("/overrun-alerts", financeHandler.GetOverrunAlerts)
 				financeGroup.GET("/cash-flow", financeHandler.GetCashFlow)
 				financeGroup.GET("/profitability-trend", financeHandler.GetProfitabilityTrend)
+				financeGroup.GET("/vendor-spend", financeHandler.GetVendorSpend)
 			}
 
 			// Milestone Dashboard & Management

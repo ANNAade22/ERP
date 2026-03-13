@@ -82,3 +82,13 @@ func (h *Handler) GetProfitabilityTrend(c *gin.Context) {
 	}
 	utils.SuccessResponse(c, http.StatusOK, "Profitability trend retrieved", data)
 }
+
+func (h *Handler) GetVendorSpend(c *gin.Context) {
+	h.logAccess(c)
+	data, err := h.service.GetVendorSpend(c.Request.Context())
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve vendor spend")
+		return
+	}
+	utils.SuccessResponse(c, http.StatusOK, "Vendor spend retrieved", data)
+}

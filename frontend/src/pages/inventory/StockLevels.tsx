@@ -52,6 +52,7 @@ export default function StockLevels() {
     const [showAddMaterialModal, setShowAddMaterialModal] = useState(false)
     const [showCreateOrderModal, setShowCreateOrderModal] = useState(false)
     const [showStockAdjustModal, setShowStockAdjustModal] = useState(false)
+    const [deleteMaterialConfirm, setDeleteMaterialConfirm] = useState<Material | null>(null)
     const [submitting, setSubmitting] = useState(false)
     const [approvedRequests, setApprovedRequests] = useState<PurchaseRequestLite[]>([])
     const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null)
@@ -213,6 +214,21 @@ export default function StockLevels() {
         }
     }
 
+    const handleDeleteMaterial = async () => {
+        if (!deleteMaterialConfirm) return
+        setSubmitting(true)
+        try {
+            await api.delete(`/inventory/materials/${deleteMaterialConfirm.id}`)
+            toast.success('Material deleted.')
+            setDeleteMaterialConfirm(null)
+            fetchAllMaterials()
+        } catch (err: any) {
+            toast.error(err?.response?.data?.message || 'Failed to delete material.')
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
     const openStockAdjustModal = (material: Material) => {
         setSelectedMaterial(material)
         setStockForm({ mode: 'IN', quantity: '', reason: '' })
@@ -361,7 +377,7 @@ export default function StockLevels() {
                                     </div>
                                     <div className="actions">
                                         <button className="btn-icon" title="Adjust Stock" onClick={() => openStockAdjustModal(material)}><Pencil size={14} /></button>
-                                        <button className="btn-icon danger" title="Low stock alert">
+                                        <button className="btn-icon danger" title="Delete material" onClick={() => setDeleteMaterialConfirm(material)}>
                                             <Trash2 size={14} />
                                         </button>
                                     </div>
@@ -543,6 +559,26 @@ export default function StockLevels() {
                                 <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? 'Creating…' : 'Create Order'}</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {deleteMaterialConfirm && (
+                <div className="modal-overlay" onClick={() => !submitting && setDeleteMaterialConfirm(null)}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <div>
+                                <h2 className="modal-title">Delete Material</h2>
+                                <p className="modal-subtitle">
+                                    Remove &quot;{deleteMaterialConfirm.name}&quot; from {deleteMaterialConfirm.project?.name || 'project'}? This cannot be undone.
+                                </p>
+                            </div>
+                            <button className="modal-close" onClick={() => setDeleteMaterialConfirm(null)}><X size={18} /></button>
+                        </div>
+                        <div className="modal-footer">
+                            <button type="button" className="btn btn-secondary" onClick={() => setDeleteMaterialConfirm(null)} disabled={submitting}>Cancel</button>
+                            <button type="button" className="btn btn-danger" onClick={handleDeleteMaterial} disabled={submitting}>{submitting ? 'Deleting…' : 'Delete'}</button>
+                        </div>
                     </div>
                 </div>
             )}

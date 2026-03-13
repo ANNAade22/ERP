@@ -65,6 +65,12 @@ type EquipmentSummary struct {
 	UnderMaintenance int64 `json:"under_maintenance"`
 }
 
+type VendorSummary struct {
+	Total     int64 `json:"total"`
+	Active    int64 `json:"active"`
+	Preferred int64 `json:"preferred"`
+}
+
 type DashboardResponse struct {
 	Overview            OverviewStats            `json:"overview"`
 	ProjectSummaries    []ProjectSummary         `json:"project_summaries"`
@@ -73,6 +79,7 @@ type DashboardResponse struct {
 	LowStockAlerts      []MaterialAlert          `json:"low_stock_alerts"`
 	Procurement         ProcurementSummary      `json:"procurement"`
 	Equipment           EquipmentSummary        `json:"equipment"`
+	Vendors             VendorSummary            `json:"vendors"`
 }
 
 // --- Service ---
@@ -142,6 +149,13 @@ func (s *service) GetDashboard(ctx context.Context) (*DashboardResponse, error) 
 	}
 	dashboard.Equipment = *equipment
 
+	// 8. Vendor Summary
+	vendors, err := s.getVendorSummary(ctx)
+	if err != nil {
+		return nil, err
+	}
+	dashboard.Vendors = *vendors
+
 	return dashboard, nil
 }
 
@@ -177,6 +191,12 @@ func (s *service) GetProjectDashboard(ctx context.Context, projectID string) (*D
 		return nil, err
 	}
 	dashboard.Equipment = *equipment
+
+	vendors, err := s.getVendorSummary(ctx)
+	if err != nil {
+		return nil, err
+	}
+	dashboard.Vendors = *vendors
 
 	return dashboard, nil
 }
@@ -341,6 +361,14 @@ func (s *service) getProcurementSummary(ctx context.Context) (*ProcurementSummar
 		Select("COALESCE(SUM(total_price), 0)").
 		Scan(&summary.TotalPurchaseValue)
 
+	return summary, nil
+}
+
+func (s *service) getVendorSummary(ctx context.Context) (*VendorSummary, error) {
+	summary := &VendorSummary{}
+	s.db.WithContext(ctx).Model(&models.Vendor{}).Count(&summary.Total)
+	s.db.WithContext(ctx).Model(&models.Vendor{}).Where("status = ?", models.VendorStatusActive).Count(&summary.Active)
+	s.db.WithContext(ctx).Model(&models.Vendor{}).Where("status = ?", models.VendorStatusPreferred).Count(&summary.Preferred)
 	return summary, nil
 }
 

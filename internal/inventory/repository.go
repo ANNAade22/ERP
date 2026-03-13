@@ -14,6 +14,7 @@ type Repository interface {
 	GetMaterialByID(ctx context.Context, id string) (*models.Material, error)
 	GetMaterialsByProject(ctx context.Context, projectID string) ([]models.Material, error)
 	UpdateMaterial(ctx context.Context, material *models.Material) error
+	DeleteMaterial(ctx context.Context, id string) error
 
 	// Stock Movement operations
 	CreateStockMovement(ctx context.Context, movement *models.StockMovement) error
@@ -55,6 +56,10 @@ func (r *repository) GetMaterialsByProject(ctx context.Context, projectID string
 
 func (r *repository) UpdateMaterial(ctx context.Context, material *models.Material) error {
 	return r.db.WithContext(ctx).Save(material).Error
+}
+
+func (r *repository) DeleteMaterial(ctx context.Context, id string) error {
+	return r.db.WithContext(ctx).Delete(&models.Material{}, "id = ?", id).Error
 }
 
 // --- Stock Movement operations ---

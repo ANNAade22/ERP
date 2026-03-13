@@ -28,6 +28,10 @@ type CreateVendorRequest struct {
 	Email       string `json:"email"`
 	Address     string `json:"address"`
 	GSTNumber   string `json:"gst_number"`
+	Type        string `json:"type"`        // e.g. KSO, Supplier, Contractor (Category in UI)
+	Status      string `json:"status"`      // ACTIVE, PREFERRED, INACTIVE
+	Rating      int    `json:"rating"`      // 0-5
+	Description string `json:"description"` // short description
 }
 
 type UpdateVendorRequest struct {
@@ -38,6 +42,10 @@ type UpdateVendorRequest struct {
 	Address     *string `json:"address"`
 	GSTNumber   *string `json:"gst_number"`
 	IsActive    *bool   `json:"is_active"`
+	Type        *string `json:"type"`
+	Status      *string `json:"status"`
+	Rating      *int    `json:"rating"`
+	Description *string `json:"description"`
 }
 
 type CreatePurchaseRequestDTO struct {
@@ -76,6 +84,14 @@ type PurchaseRequestListFilter struct {
 	To        string
 }
 
+// VendorWithStats extends Vendor with aggregated metrics from purchase requests
+type VendorWithStats struct {
+	models.Vendor
+	ProjectsCount  int64   `json:"projects_count"`
+	TotalValue     float64 `json:"total_value"`
+	ReliabilityPct float64 `json:"reliability_pct"`
+}
+
 type RecentOrderDTO struct {
 	OrderID          string                         `json:"order_id"`
 	Supplier         string                         `json:"supplier"`
@@ -92,9 +108,11 @@ type RecentOrderDTO struct {
 type Service interface {
 	// Vendors
 	CreateVendor(ctx context.Context, req CreateVendorRequest) (*models.Vendor, error)
-	GetAllVendors(ctx context.Context) ([]models.Vendor, error)
-	GetVendorByID(ctx context.Context, id string) (*models.Vendor, error)
+	GetAllVendors(ctx context.Context, includeInactive bool, searchQ string) ([]VendorWithStats, error)
+	GetVendorByID(ctx context.Context, id string) (*VendorWithStats, error)
 	UpdateVendor(ctx context.Context, id string, req UpdateVendorRequest) (*models.Vendor, error)
+	DeleteVendor(ctx context.Context, id string) error
+	GetVendorsByProject(ctx context.Context, projectID string) ([]ProjectVendorSummary, error)
 
 	// Purchase Requests
 	CreatePurchaseRequest(ctx context.Context, req CreatePurchaseRequestDTO, requestedBy string) (*models.PurchaseRequest, error)
@@ -118,6 +136,24 @@ func NewService(repo Repository) Service {
 // --- Vendor methods ---
 
 func (s *service) CreateVendor(ctx context.Context, req CreateVendorRequest) (*models.Vendor, error) {
+	status := models.VendorStatusActive
+	if req.Status != "" {
+		switch strings.ToUpper(req.Status) {
+		case "PREFERRED":
+			status = models.VendorStatusPreferred
+		case "INACTIVE":
+			status = models.VendorStatusInactive
+		default:
+			status = models.VendorStatusActive
+		}
+	}
+	rating := req.Rating
+	if rating < 0 {
+		rating = 0
+	}
+	if rating > 5 {
+		rating = 5
+	}
 	vendor := &models.Vendor{
 		Name:        req.Name,
 		ContactName: req.ContactName,
@@ -125,7 +161,11 @@ func (s *service) CreateVendor(ctx context.Context, req CreateVendorRequest) (*m
 		Email:       req.Email,
 		Address:     req.Address,
 		GSTNumber:   req.GSTNumber,
-		IsActive:    true,
+		Type:        req.Type,
+		Status:      status,
+		Rating:      rating,
+		Description: req.Description,
+		IsActive:    status != models.VendorStatusInactive,
 	}
 	err := s.repo.CreateVendor(ctx, vendor)
 	if err != nil {
@@ -134,16 +174,74 @@ func (s *service) CreateVendor(ctx context.Context, req CreateVendorRequest) (*m
 	return vendor, nil
 }
 
-func (s *service) GetAllVendors(ctx context.Context) ([]models.Vendor, error) {
-	return s.repo.GetAllVendors(ctx)
+func (s *service) GetAllVendors(ctx context.Context, includeInactive bool, searchQ string) ([]VendorWithStats, error) {
+	vendors, err := s.repo.GetAllVendors(ctx, includeInactive, searchQ)
+	if err != nil {
+		return nil, err
+	}
+	if len(vendors) == 0 {
+		return []VendorWithStats{}, nil
+	}
+	ids := make([]string, 0, len(vendors))
+	for i := range vendors {
+		ids = append(ids, vendors[i].ID)
+	}
+	statsList, err := s.repo.GetVendorStatsBatch(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	statsMap := make(map[string]VendorStats)
+	for i := range statsList {
+		statsMap[statsList[i].VendorID] = statsList[i]
+	}
+	out := make([]VendorWithStats, len(vendors))
+	for i := range vendors {
+		out[i] = VendorWithStats{
+			Vendor:         vendors[i],
+			ProjectsCount:  0,
+			TotalValue:     0,
+			ReliabilityPct: 0,
+		}
+		if st, ok := statsMap[vendors[i].ID]; ok {
+			out[i].ProjectsCount = st.ProjectsCount
+			out[i].TotalValue = st.TotalValue
+			out[i].ReliabilityPct = st.ReliabilityPct
+		}
+	}
+	return out, nil
 }
 
-func (s *service) GetVendorByID(ctx context.Context, id string) (*models.Vendor, error) {
+func (s *service) GetVendorByID(ctx context.Context, id string) (*VendorWithStats, error) {
 	vendor, err := s.repo.GetVendorByID(ctx, id)
 	if err != nil {
 		return nil, ErrVendorNotFound
 	}
-	return vendor, nil
+	statsList, err := s.repo.GetVendorStatsBatch(ctx, []string{id})
+	if err != nil {
+		return nil, err
+	}
+	out := &VendorWithStats{Vendor: *vendor}
+	for i := range statsList {
+		if statsList[i].VendorID == id {
+			out.ProjectsCount = statsList[i].ProjectsCount
+			out.TotalValue = statsList[i].TotalValue
+			out.ReliabilityPct = statsList[i].ReliabilityPct
+			break
+		}
+	}
+	return out, nil
+}
+
+func (s *service) DeleteVendor(ctx context.Context, id string) error {
+	_, err := s.repo.GetVendorByID(ctx, id)
+	if err != nil {
+		return ErrVendorNotFound
+	}
+	return s.repo.DeleteVendor(ctx, id)
+}
+
+func (s *service) GetVendorsByProject(ctx context.Context, projectID string) ([]ProjectVendorSummary, error) {
+	return s.repo.GetVendorsByProject(ctx, projectID)
 }
 
 func (s *service) UpdateVendor(ctx context.Context, id string, req UpdateVendorRequest) (*models.Vendor, error) {
@@ -172,6 +270,33 @@ func (s *service) UpdateVendor(ctx context.Context, id string, req UpdateVendorR
 	}
 	if req.IsActive != nil {
 		vendor.IsActive = *req.IsActive
+	}
+	if req.Type != nil {
+		vendor.Type = *req.Type
+	}
+	if req.Status != nil {
+		switch strings.ToUpper(*req.Status) {
+		case "PREFERRED":
+			vendor.Status = models.VendorStatusPreferred
+		case "INACTIVE":
+			vendor.Status = models.VendorStatusInactive
+		default:
+			vendor.Status = models.VendorStatusActive
+		}
+		vendor.IsActive = vendor.Status != models.VendorStatusInactive
+	}
+	if req.Rating != nil {
+		r := *req.Rating
+		if r < 0 {
+			r = 0
+		}
+		if r > 5 {
+			r = 5
+		}
+		vendor.Rating = r
+	}
+	if req.Description != nil {
+		vendor.Description = *req.Description
 	}
 
 	err = s.repo.UpdateVendor(ctx, vendor)

@@ -30,6 +30,8 @@ type Expense struct {
 	ID          string          `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
 	ProjectID   string          `gorm:"type:uuid;not null" json:"project_id"`
 	Project     *Project        `gorm:"foreignKey:ProjectID" json:"project,omitempty"`
+	VendorID    *string         `gorm:"type:uuid" json:"vendor_id,omitempty"`
+	Vendor      *Vendor         `gorm:"foreignKey:VendorID" json:"vendor,omitempty"`
 	Category    ExpenseCategory `gorm:"type:varchar(50);not null" json:"category"`
 	Amount      float64         `gorm:"type:decimal(15,2);not null" json:"amount"`
 	Description string          `gorm:"type:text" json:"description"`

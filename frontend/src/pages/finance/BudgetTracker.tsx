@@ -48,6 +48,19 @@ interface Expense {
     description: string
     date: string
     status: string
+    vendor_id?: string
+    vendor?: { id: string; name: string }
+}
+
+interface VendorOption {
+    id: string
+    name: string
+}
+
+interface VendorSpendEntry {
+    vendor_id: string
+    vendor_name: string
+    total_spend: number
 }
 
 const canUpdateBudget = (role: string | undefined) =>
@@ -106,7 +119,12 @@ function BudgetTracker() {
     const [addExpenseAmount, setAddExpenseAmount] = useState('')
     const [addExpenseDescription, setAddExpenseDescription] = useState('')
     const [addExpenseDate, setAddExpenseDate] = useState(() => new Date().toISOString().slice(0, 10))
+    const [addExpenseVendor, setAddExpenseVendor] = useState('')
     const [addExpenseSubmitting, setAddExpenseSubmitting] = useState(false)
+    const [addExpenseVendors, setAddExpenseVendors] = useState<VendorOption[]>([])
+
+    // Spend by vendor (finance)
+    const [vendorSpend, setVendorSpend] = useState<VendorSpendEntry[]>([])
 
     // Cost Breakdown: expenses list for cut cost
     const [costBreakdownExpenses, setCostBreakdownExpenses] = useState<Expense[]>([])
@@ -114,9 +132,10 @@ function BudgetTracker() {
     const fetchBudget = async (isInitial = true) => {
         try {
             if (isInitial) setLoading(true)
-            const [budgetRes, monthsRes] = await Promise.all([
+            const [budgetRes, monthsRes, vendorSpendRes] = await Promise.all([
                 api.get('/finance/budget-overview'),
                 api.get('/finance/expenses-by-month'),
+                api.get('/finance/vendor-spend').catch(() => ({ data: { success: false, data: [] } })),
             ])
             if (budgetRes.data?.success && budgetRes.data?.data) {
                 const d = budgetRes.data.data as Record<string, unknown>
@@ -139,6 +158,11 @@ function BudgetTracker() {
             if (monthsRes.data?.success && Array.isArray(monthsRes.data?.data)) {
                 setMonthsData(monthsRes.data.data as MonthTotal[])
             }
+            if (vendorSpendRes?.data?.success && Array.isArray(vendorSpendRes.data?.data)) {
+                setVendorSpend(vendorSpendRes.data.data as VendorSpendEntry[])
+            } else {
+                setVendorSpend([])
+            }
             setLastUpdated(new Date())
         } catch (err: unknown) {
             const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -154,6 +178,15 @@ function BudgetTracker() {
         const interval = setInterval(() => fetchBudget(false), POLL_INTERVAL_MS)
         return () => clearInterval(interval)
     }, [])
+
+    const openAddExpenseModal = () => {
+        setShowAddExpenseModal(true)
+        api.get<{ success?: boolean; data?: { id: string; name: string }[] }>('/vendors').then((res) => {
+            if (res.data?.success && Array.isArray(res.data.data)) {
+                setAddExpenseVendors(res.data.data.map((v: { id: string; name: string }) => ({ id: v.id, name: v.name })))
+            }
+        }).catch(() => setAddExpenseVendors([]))
+    }
 
     const openCostBreakdown = async (project: ProjectSummary) => {
         setCostBreakdownProject(project)
@@ -259,6 +292,7 @@ function BudgetTracker() {
         try {
             await api.post('/expenses', {
                 project_id: addExpenseProject,
+                vendor_id: addExpenseVendor || undefined,
                 category: addExpenseCategory,
                 amount,
                 description: addExpenseDescription || undefined,
@@ -267,6 +301,7 @@ function BudgetTracker() {
             toast.success('Expense added. Pending approval to count toward actual.')
             setShowAddExpenseModal(false)
             setAddExpenseProject('')
+            setAddExpenseVendor('')
             setAddExpenseAmount('')
             setAddExpenseDescription('')
             setAddExpenseDate(new Date().toISOString().slice(0, 10))
@@ -405,7 +440,7 @@ function BudgetTracker() {
                         </button>
                     )}
                     {canAddExpense(user?.role) && (
-                        <button id="budget-tracker-add-expense-btn" type="button" className="btn btn-primary" onClick={() => setShowAddExpenseModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button id="budget-tracker-add-expense-btn" type="button" className="btn btn-primary" onClick={openAddExpenseModal} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Plus size={16} /> Add Expense
                         </button>
                     )}
@@ -491,7 +526,7 @@ function BudgetTracker() {
                                 ))}
                             </select>
                             {canAddExpense(user?.role) && (
-                                <button type="button" className="btn btn-primary" onClick={() => setShowAddExpenseModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 32, fontSize: '0.8125rem', paddingLeft: 10, paddingRight: 10 }}>
+                                <button type="button" className="btn btn-primary" onClick={openAddExpenseModal} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 32, fontSize: '0.8125rem', paddingLeft: 10, paddingRight: 10 }}>
                                     <Plus size={14} /> Add Expense
                                 </button>
                             )}
@@ -644,7 +679,7 @@ function BudgetTracker() {
                                     : 'Approved expenses will appear here by category.'}
                             </p>
                             {canAddExpense(user?.role) && (
-                                <button type="button" className="btn btn-primary" style={{ marginTop: 'var(--space-4)' }} onClick={() => setShowAddExpenseModal(true)}>
+                                <button type="button" className="btn btn-primary" style={{ marginTop: 'var(--space-4)' }} onClick={openAddExpenseModal}>
                                     Add Expense
                                 </button>
                             )}
@@ -708,6 +743,38 @@ function BudgetTracker() {
                 </div>
             )}
 
+            {/* Spend by vendor */}
+            <div className="content-card" style={{ marginTop: 'var(--space-6)' }}>
+                <div className="content-card-header">
+                    <div>
+                        <div className="content-card-title">Spend by vendor</div>
+                        <div className="content-card-subtitle">Approved expenses grouped by vendor</div>
+                    </div>
+                </div>
+                {vendorSpend.length === 0 ? (
+                    <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        No vendor spend data yet. Add expenses with a vendor and approve them.
+                    </div>
+                ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                <th style={{ textAlign: 'left', padding: 'var(--space-3)' }}>Vendor</th>
+                                <th style={{ textAlign: 'right', padding: 'var(--space-3)' }}>Total spend</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {vendorSpend.map((v) => (
+                                <tr key={v.vendor_id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                                    <td style={{ padding: 'var(--space-3)' }}>{v.vendor_name}</td>
+                                    <td style={{ padding: 'var(--space-3)', textAlign: 'right' }}>${v.total_spend.toLocaleString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+
             {/* Cost Breakdown Modal — includes expenses list to cut cost */}
             {costBreakdownProject && (
                 <div className="modal-overlay" onClick={() => setCostBreakdownProject(null)}>
@@ -761,6 +828,7 @@ function BudgetTracker() {
                                                             <span style={{ fontWeight: 600 }}>${exp.amount.toLocaleString()}</span>
                                                             <span style={{ marginLeft: 8, fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>{exp.category}</span>
                                                             {exp.description && <div style={{ fontSize: 'var(--font-xs)', color: 'var(--text-secondary)' }}>{exp.description}</div>}
+                                                            {exp.vendor?.name && <div style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>Vendor: {exp.vendor.name}</div>}
                                                             <span className={`badge badge-${exp.status === 'APPROVED' ? 'success' : exp.status === 'PENDING' ? 'warning' : 'neutral'}`} style={{ marginTop: 4, display: 'inline-block' }}>{exp.status}</span>
                                                         </div>
                                                         <div style={{ display: 'flex', gap: 8 }}>
@@ -923,6 +991,15 @@ function BudgetTracker() {
                                     <option value="">Select project</option>
                                     {projectSummaries.map((p) => (
                                         <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Vendor (optional)</label>
+                                <select className="form-input" value={addExpenseVendor} onChange={(e) => setAddExpenseVendor(e.target.value)}>
+                                    <option value="">— No vendor —</option>
+                                    {addExpenseVendors.map((v) => (
+                                        <option key={v.id} value={v.id}>{v.name}</option>
                                     ))}
                                 </select>
                             </div>

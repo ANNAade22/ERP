@@ -97,6 +97,13 @@ type OverrunProject struct {
 	OverrunPct  float64 `json:"overrun_pct"`
 }
 
+// VendorSpendEntry holds spend per vendor (from approved expenses)
+type VendorSpendEntry struct {
+	VendorID   string  `json:"vendor_id"`
+	VendorName string  `json:"vendor_name"`
+	TotalSpend float64 `json:"total_spend"`
+}
+
 type Service interface {
 	GetBudgetOverview(ctx context.Context) (*BudgetOverviewResponse, error)
 	GetProfitability(ctx context.Context) (*ProfitabilityResponse, error)
@@ -104,6 +111,7 @@ type Service interface {
 	GetOverrunAlerts(ctx context.Context) ([]OverrunProject, error)
 	GetCashFlow(ctx context.Context) ([]CashFlowMonth, error)
 	GetProfitabilityTrend(ctx context.Context) ([]ProfitabilityTrendMonth, error)
+	GetVendorSpend(ctx context.Context) ([]VendorSpendEntry, error)
 }
 
 type service struct {
@@ -421,4 +429,32 @@ func (s *service) getExpenseBreakdown(ctx context.Context, projectID string) ([]
 		breakdown[i].Total = roundMoney(breakdown[i].Total)
 	}
 	return breakdown, nil
+}
+
+func (s *service) GetVendorSpend(ctx context.Context) ([]VendorSpendEntry, error) {
+	var results []struct {
+		VendorID   string  `gorm:"column:vendor_id"`
+		VendorName string  `gorm:"column:vendor_name"`
+		TotalSpend float64 `gorm:"column:total_spend"`
+	}
+	err := s.db.WithContext(ctx).
+		Table("expenses").
+		Select("expenses.vendor_id AS vendor_id, vendors.name AS vendor_name, COALESCE(SUM(expenses.amount), 0)::double precision AS total_spend").
+		Joins("INNER JOIN vendors ON vendors.id = expenses.vendor_id AND vendors.deleted_at IS NULL").
+		Where("expenses.status = ? AND expenses.deleted_at IS NULL", models.ExpenseStatusApproved).
+		Group("expenses.vendor_id, vendors.name").
+		Order("total_spend DESC").
+		Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+	out := make([]VendorSpendEntry, len(results))
+	for i := range results {
+		out[i] = VendorSpendEntry{
+			VendorID:   results[i].VendorID,
+			VendorName: results[i].VendorName,
+			TotalSpend: roundMoney(results[i].TotalSpend),
+		}
+	}
+	return out, nil
 }

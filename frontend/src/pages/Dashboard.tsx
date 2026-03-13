@@ -61,6 +61,11 @@ interface DashboardData {
         available: number
         under_maintenance: number
     }
+    vendors?: {
+        total: number
+        active: number
+        preferred: number
+    }
     expense_breakdown?: { category: string; total: number }[]
 }
 
@@ -100,7 +105,7 @@ function StatCard({ stat }: { stat: StatItem }) {
 
 // --- Admin: full overview
 function AdminDashboard({ data }: { data: DashboardData }) {
-    const { overview, project_summaries, attendance_summaries, low_stock_alerts, procurement, equipment } = data
+    const { overview, project_summaries, attendance_summaries, low_stock_alerts, procurement, equipment, vendors } = data
     const avgAttendance =
         attendance_summaries.length > 0
             ? attendance_summaries.reduce((acc, curr) => acc + curr.attendance_rate, 0) / attendance_summaries.length
@@ -115,6 +120,7 @@ function AdminDashboard({ data }: { data: DashboardData }) {
         { title: 'Labor Attendance', value: `${avgAttendance.toFixed(1)}%`, subtitle: 'Today across all sites', subtitleType: avgAttendance > 90 ? 'positive' : 'warning', icon: <Users size={20} />, to: '/attendance', id: 'dashboard-stat-attendance' },
         { title: 'Material Stock', value: low_stock_alerts.length.toString(), subtitle: 'Items low in stock', subtitleType: low_stock_alerts.length > 0 ? 'negative' : 'positive', icon: <Package size={20} />, to: '/inventory/stock-levels', id: 'dashboard-stat-material-stock' },
         { title: 'Total Expenses', value: `$${overview.total_spent.toLocaleString()}`, subtitle: 'All time', subtitleType: 'info' as const, icon: <AlertTriangle size={20} />, to: '/finance/budget-tracker', id: 'dashboard-stat-total-expenses' },
+        { title: 'Vendors', value: vendors ? vendors.total.toString() : '0', subtitle: vendors ? `${vendors.active} active, ${vendors.preferred} preferred` : 'Suppliers & contractors', subtitleType: 'info' as const, icon: <Truck size={20} />, to: '/vendors/contractors', id: 'dashboard-stat-vendors' },
     ]
 
     return (
