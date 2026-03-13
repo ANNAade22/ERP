@@ -79,6 +79,7 @@ const menuItems: MenuItem[] = [
         label: 'Finance',
         icon: <DollarSign size={20} />,
         children: [
+            { label: 'Finance Overview', path: '/finance' },
             { label: 'Budget Tracker', path: '/finance/budget-tracker' },
             { label: 'Cash Flow', path: '/finance/cash-flow' },
             { label: 'Profitability', path: '/finance/profitability' },

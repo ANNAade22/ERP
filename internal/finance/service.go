@@ -3,6 +3,7 @@ package finance
 import (
 	"context"
 	"math"
+	"time"
 
 	"erp-project/internal/models"
 
@@ -69,12 +70,40 @@ type ExpensesByMonthResponse struct {
 	Months []MonthTotal `json:"months"`
 }
 
+type CashFlowMonth struct {
+	Month    string  `json:"month"`
+	Inflows  float64 `json:"inflows"`
+	Outflows float64 `json:"outflows"`
+	Net      float64 `json:"net"`
+}
+
+type ProfitabilityTrendMonth struct {
+	Month        string  `json:"month"`
+	Revenue      float64 `json:"revenue"`
+	Costs        float64 `json:"costs"`
+	Profit       float64 `json:"profit"`
+	ProfitMargin float64 `json:"profit_margin"`
+}
+
 // --- Service ---
+
+type OverrunProject struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Status      string  `json:"status"`
+	Budget      float64 `json:"budget"`
+	SpentAmount float64 `json:"spent_amount"`
+	Overrun     float64 `json:"overrun"`
+	OverrunPct  float64 `json:"overrun_pct"`
+}
 
 type Service interface {
 	GetBudgetOverview(ctx context.Context) (*BudgetOverviewResponse, error)
 	GetProfitability(ctx context.Context) (*ProfitabilityResponse, error)
 	GetExpensesByMonth(ctx context.Context) ([]MonthTotal, error)
+	GetOverrunAlerts(ctx context.Context) ([]OverrunProject, error)
+	GetCashFlow(ctx context.Context) ([]CashFlowMonth, error)
+	GetProfitabilityTrend(ctx context.Context) ([]ProfitabilityTrendMonth, error)
 }
 
 type service struct {
@@ -247,6 +276,129 @@ func (s *service) getMilestoneCompletion(ctx context.Context, projectID string) 
 		return 0
 	}
 	return avg
+}
+
+func (s *service) GetOverrunAlerts(ctx context.Context) ([]OverrunProject, error) {
+	summaries, err := s.getProjectSummariesWithCompletion(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []OverrunProject
+	for _, p := range summaries {
+		if p.Budget > 0 && p.SpentAmount > p.Budget {
+			overrun := p.SpentAmount - p.Budget
+			overrunPct := (overrun / p.Budget) * 100
+			out = append(out, OverrunProject{
+				ID:          p.ID,
+				Name:        p.Name,
+				Status:      p.Status,
+				Budget:      roundMoney(p.Budget),
+				SpentAmount: roundMoney(p.SpentAmount),
+				Overrun:     roundMoney(overrun),
+				OverrunPct:  roundMoney(overrunPct),
+			})
+		}
+	}
+	// Sort by overrun amount descending (largest first)
+	for i := 0; i < len(out); i++ {
+		for j := i + 1; j < len(out); j++ {
+			if out[j].Overrun > out[i].Overrun {
+				out[i], out[j] = out[j], out[i]
+			}
+		}
+	}
+	return out, nil
+}
+
+func (s *service) GetCashFlow(ctx context.Context) ([]CashFlowMonth, error) {
+	// Get total budget for inflow allocation (simple: budget/12 per month)
+	var totalBudget float64
+	_ = s.db.WithContext(ctx).Model(&models.Project{}).Select("COALESCE(SUM(budget), 0)").Scan(&totalBudget).Error
+	totalBudget = roundMoney(totalBudget)
+	monthlyInflow := totalBudget / 12
+
+	// Get approved expenses by month
+	var expenseResults []struct {
+		Month string  `gorm:"column:month"`
+		Total float64 `gorm:"column:total"`
+	}
+	_ = s.db.WithContext(ctx).
+		Model(&models.Expense{}).
+		Where("status = ?", models.ExpenseStatusApproved).
+		Select("to_char(date, 'YYYY-MM') as month, COALESCE(SUM(amount), 0) as total").
+		Group("to_char(date, 'YYYY-MM')").
+		Order("month DESC").
+		Limit(12).
+		Scan(&expenseResults).Error
+
+	expenseByMonth := make(map[string]float64)
+	for _, r := range expenseResults {
+		expenseByMonth[r.Month] = roundMoney(r.Total)
+	}
+
+	// Build last 12 months (newest first)
+	now := time.Now()
+	out := make([]CashFlowMonth, 0, 12)
+	for i := 0; i < 12; i++ {
+		m := now.AddDate(0, -i, 0)
+		monthStr := m.Format("2006-01")
+		outflows := expenseByMonth[monthStr]
+		net := roundMoney(monthlyInflow - outflows)
+		out = append(out, CashFlowMonth{
+			Month:    monthStr,
+			Inflows:  roundMoney(monthlyInflow),
+			Outflows: roundMoney(outflows),
+			Net:      net,
+		})
+	}
+	return out, nil
+}
+
+func (s *service) GetProfitabilityTrend(ctx context.Context) ([]ProfitabilityTrendMonth, error) {
+	var totalBudget float64
+	_ = s.db.WithContext(ctx).Model(&models.Project{}).Select("COALESCE(SUM(budget), 0)").Scan(&totalBudget).Error
+	totalBudget = roundMoney(totalBudget)
+	monthlyRevenue := totalBudget / 12
+
+	var expenseResults []struct {
+		Month string  `gorm:"column:month"`
+		Total float64 `gorm:"column:total"`
+	}
+	_ = s.db.WithContext(ctx).
+		Model(&models.Expense{}).
+		Where("status = ?", models.ExpenseStatusApproved).
+		Select("to_char(date, 'YYYY-MM') as month, COALESCE(SUM(amount), 0) as total").
+		Group("to_char(date, 'YYYY-MM')").
+		Order("month DESC").
+		Limit(12).
+		Scan(&expenseResults).Error
+
+	costsByMonth := make(map[string]float64)
+	for _, r := range expenseResults {
+		costsByMonth[r.Month] = roundMoney(r.Total)
+	}
+
+	now := time.Now()
+	out := make([]ProfitabilityTrendMonth, 0, 12)
+	for i := 0; i < 12; i++ {
+		m := now.AddDate(0, -i, 0)
+		monthStr := m.Format("2006-01")
+		costs := costsByMonth[monthStr]
+		rev := roundMoney(monthlyRevenue)
+		profit := roundMoney(rev - costs)
+		margin := float64(0)
+		if rev > 0 {
+			margin = roundMoney((profit / rev) * 100)
+		}
+		out = append(out, ProfitabilityTrendMonth{
+			Month:        monthStr,
+			Revenue:      rev,
+			Costs:        roundMoney(costs),
+			Profit:       profit,
+			ProfitMargin: margin,
+		})
+	}
+	return out, nil
 }
 
 func (s *service) getExpenseBreakdown(ctx context.Context, projectID string) ([]ExpenseCategorySummary, error) {

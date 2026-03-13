@@ -400,7 +400,7 @@ function BudgetTracker() {
                         <Download size={16} /> Export Report
                     </button>
                     {canUpdateBudget(user?.role) && (
-                        <button id="budget-tracker-add-budget-btn" type="button" className="btn btn-secondary" onClick={() => { setShowAddBudgetModal(true); setUpdateBudgetProject(projectSummaries[0] || null); setUpdateBudgetValue(projectSummaries[0]?.budget?.toString() || '0'); }} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button id="budget-tracker-add-budget-btn" type="button" className="btn btn-secondary" onClick={() => { setShowAddBudgetModal(true); setUpdateBudgetProject(null); setUpdateBudgetValue(''); }} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Plus size={16} /> Add Budget
                         </button>
                     )}
@@ -504,14 +504,19 @@ function BudgetTracker() {
                                     <p style={{ marginBottom: 'var(--space-3)' }}>No projects with budgets yet.</p>
                                     <p style={{ fontSize: 'var(--font-sm)', marginBottom: 'var(--space-4)' }}>
                                         {canUpdateBudget(user?.role)
-                                            ? 'Add a budget from the header or ensure projects exist with budget set.'
+                                            ? 'Create projects first, then add budgets from the header or project settings.'
                                             : 'Projects need budgets to appear here.'}
                                     </p>
-                                    {canAddExpense(user?.role) && (
-                                        <p style={{ fontSize: 'var(--font-sm)' }}>
-                                            Add expenses to track costs. Expenses need approval before they count toward actual spent.
-                                        </p>
-                                    )}
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-2)' }}>
+                                        {canUpdateBudget(user?.role) && (
+                                            <Link to="/projects" className="btn btn-primary">Go to Projects</Link>
+                                        )}
+                                        {canAddExpense(user?.role) && (
+                                            <span style={{ fontSize: 'var(--font-sm)' }}>
+                                                Add expenses to track costs. Expenses need approval before they count toward actual spent.
+                                            </span>
+                                        )}
+                                    </div>
                                 </>
                             ) : (
                                 <>
@@ -638,6 +643,11 @@ function BudgetTracker() {
                                     ? 'Add expenses and have them approved to see category breakdowns.'
                                     : 'Approved expenses will appear here by category.'}
                             </p>
+                            {canAddExpense(user?.role) && (
+                                <button type="button" className="btn btn-primary" style={{ marginTop: 'var(--space-4)' }} onClick={() => setShowAddExpenseModal(true)}>
+                                    Add Expense
+                                </button>
+                            )}
                         </div>
                     ) : (
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>

@@ -231,6 +231,9 @@ func main() {
 				financeGroup.GET("/budget-overview", financeHandler.GetBudgetOverview)
 				financeGroup.GET("/profitability", financeHandler.GetProfitability)
 				financeGroup.GET("/expenses-by-month", financeHandler.GetExpensesByMonth)
+				financeGroup.GET("/overrun-alerts", financeHandler.GetOverrunAlerts)
+				financeGroup.GET("/cash-flow", financeHandler.GetCashFlow)
+				financeGroup.GET("/profitability-trend", financeHandler.GetProfitabilityTrend)
 			}
 
 			// Milestone Dashboard & Management

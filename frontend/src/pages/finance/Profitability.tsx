@@ -33,6 +33,19 @@ interface ProfitabilityData {
     projects: ProjectProfitability[]
 }
 
+interface CategoryBreakdown {
+    category: string
+    total: number
+}
+
+interface ProfitabilityTrendMonth {
+    month: string
+    revenue: number
+    costs: number
+    profit: number
+    profit_margin: number
+}
+
 export default function Profitability() {
     const { user } = useAuth()
     const [data, setData] = useState<ProfitabilityData | null>(null)
@@ -40,6 +53,8 @@ export default function Profitability() {
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
     const [activeTab, setActiveTab] = useState(0)
     const [statusFilter, setStatusFilter] = useState<string>('All')
+    const [costBreakdown, setCostBreakdown] = useState<CategoryBreakdown[]>([])
+    const [trendData, setTrendData] = useState<ProfitabilityTrendMonth[]>([])
 
     const fetchProfitability = async (isInitial = true) => {
         try {
@@ -63,6 +78,40 @@ export default function Profitability() {
         const interval = setInterval(() => fetchProfitability(false), POLL_INTERVAL_MS)
         return () => clearInterval(interval)
     }, [])
+
+    useEffect(() => {
+        if (activeTab !== 2) return
+        const fetchBreakdown = async () => {
+            try {
+                const res = await api.get('/finance/budget-overview')
+                if (res.data?.success && res.data?.data?.expense_breakdown) {
+                    setCostBreakdown(res.data.data.expense_breakdown as CategoryBreakdown[])
+                } else {
+                    setCostBreakdown([])
+                }
+            } catch {
+                setCostBreakdown([])
+            }
+        }
+        fetchBreakdown()
+    }, [activeTab])
+
+    useEffect(() => {
+        if (activeTab !== 1) return
+        const fetchTrend = async () => {
+            try {
+                const res = await api.get('/finance/profitability-trend')
+                if (res.data?.success && Array.isArray(res.data?.data)) {
+                    setTrendData(res.data.data as ProfitabilityTrendMonth[])
+                } else {
+                    setTrendData([])
+                }
+            } catch {
+                setTrendData([])
+            }
+        }
+        fetchTrend()
+    }, [activeTab])
 
     const filteredProjects = useMemo(() => {
         if (!data?.projects) return []
@@ -214,6 +263,7 @@ export default function Profitability() {
                             <p style={{ fontSize: 'var(--font-sm)', marginTop: 'var(--space-2)' }}>
                                 Projects with budgets and spending will appear here.
                             </p>
+                            <Link to="/finance/budget-tracker" className="btn btn-primary" style={{ marginTop: 'var(--space-4)' }}>Go to Budget Tracker</Link>
                         </div>
                     ) : (
                         filteredProjects.map((project) => {
@@ -297,12 +347,56 @@ export default function Profitability() {
                     <div className="content-card-header">
                         <div>
                             <div className="content-card-title">Trend Analysis</div>
-                            <div className="content-card-subtitle">Coming soon</div>
+                            <div className="content-card-subtitle">Revenue, costs, and profit by month (last 12 months)</div>
                         </div>
                     </div>
-                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        Trend analysis and historical comparisons will be available in a future update.
-                    </div>
+                    {trendData.length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            <p>No trend data yet.</p>
+                            <p style={{ fontSize: 'var(--font-sm)', marginTop: 'var(--space-2)' }}>
+                                Add projects with budgets and approve expenses to see trends.
+                            </p>
+                            <Link to="/finance/budget-tracker" className="btn btn-primary" style={{ marginTop: 'var(--space-4)' }}>Go to Budget Tracker</Link>
+                        </div>
+                    ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                        <th style={{ textAlign: 'left', padding: 'var(--space-3)', fontWeight: 600 }}>Month</th>
+                                        <th style={{ textAlign: 'right', padding: 'var(--space-3)', fontWeight: 600 }}>Revenue</th>
+                                        <th style={{ textAlign: 'right', padding: 'var(--space-3)', fontWeight: 600 }}>Costs</th>
+                                        <th style={{ textAlign: 'right', padding: 'var(--space-3)', fontWeight: 600 }}>Profit</th>
+                                        <th style={{ textAlign: 'right', padding: 'var(--space-3)', fontWeight: 600 }}>Margin %</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {trendData.map((row) => (
+                                        <tr key={row.month} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                                            <td style={{ padding: 'var(--space-3)' }}>{row.month}</td>
+                                            <td style={{ textAlign: 'right', padding: 'var(--space-3)' }}>${row.revenue.toLocaleString()}</td>
+                                            <td style={{ textAlign: 'right', padding: 'var(--space-3)' }}>${row.costs.toLocaleString()}</td>
+                                            <td style={{
+                                                textAlign: 'right',
+                                                padding: 'var(--space-3)',
+                                                fontWeight: 600,
+                                                color: row.profit >= 0 ? 'var(--success)' : 'var(--danger)',
+                                            }}>
+                                                ${row.profit.toLocaleString()}
+                                            </td>
+                                            <td style={{
+                                                textAlign: 'right',
+                                                padding: 'var(--space-3)',
+                                                color: row.profit_margin >= 0 ? 'var(--success)' : 'var(--danger)',
+                                            }}>
+                                                {row.profit_margin.toFixed(1)}%
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -311,26 +405,92 @@ export default function Profitability() {
                     <div className="content-card-header">
                         <div>
                             <div className="content-card-title">Cost Analysis</div>
-                            <div className="content-card-subtitle">Coming soon</div>
+                            <div className="content-card-subtitle">Approved expenses by category across all projects</div>
                         </div>
                     </div>
-                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        Cost breakdown and analysis will be available in a future update.
-                    </div>
+                    {costBreakdown.length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            <p>No cost breakdown data yet.</p>
+                            <p style={{ fontSize: 'var(--font-sm)', marginTop: 'var(--space-2)' }}>
+                                Add expenses and approve them to see category breakdowns.
+                            </p>
+                            <Link to="/finance/budget-tracker" className="btn btn-primary" style={{ marginTop: 'var(--space-4)' }}>Go to Budget Tracker</Link>
+                        </div>
+                    ) : (
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                            {costBreakdown.map((e) => (
+                                <li
+                                    key={e.category}
+                                    style={{
+                                        padding: 'var(--space-4)',
+                                        borderBottom: '1px solid var(--border)',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                    }}
+                                >
+                                    <span>{e.category}</span>
+                                    <strong>${e.total.toLocaleString()}</strong>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
             )}
 
             {activeTab === 3 && (
                 <div className="content-card">
-                    <div className="content-card-header">
+                    <div className="content-card-header" style={{ flexWrap: 'wrap', gap: 'var(--space-4)' }}>
                         <div>
                             <div className="content-card-title">Revenue Streams</div>
-                            <div className="content-card-subtitle">Coming soon</div>
+                            <div className="content-card-subtitle">Per-project revenue (budget allocation)</div>
                         </div>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="form-input"
+                            style={{ minWidth: 140 }}
+                        >
+                            {PROJECT_STATUSES.map((s) => (
+                                <option key={s} value={s}>Filter by {s.replace('_', ' ')}</option>
+                            ))}
+                        </select>
                     </div>
-                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        Revenue stream analysis will be available in a future update.
-                    </div>
+                    {filteredProjects.length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            <p>No revenue stream data yet.</p>
+                            <p style={{ fontSize: 'var(--font-sm)', marginTop: 'var(--space-2)' }}>
+                                Projects with budgets will appear here.
+                            </p>
+                            <Link to="/finance/budget-tracker" className="btn btn-primary" style={{ marginTop: 'var(--space-4)' }}>Go to Budget Tracker</Link>
+                        </div>
+                    ) : (
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                            {filteredProjects.map((p) => (
+                                <li
+                                    key={p.id}
+                                    style={{
+                                        padding: 'var(--space-4)',
+                                        borderBottom: '1px solid var(--border)',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        flexWrap: 'wrap',
+                                        gap: 'var(--space-2)',
+                                    }}
+                                >
+                                    <div>
+                                        <span style={{ fontWeight: 600 }}>{p.name}</span>
+                                        <span className="badge badge-neutral" style={{ marginLeft: 8, fontSize: '0.6875rem' }}>{p.status.replace(/_/g, ' ')}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+                                        <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-muted)' }}>{p.completion.toFixed(0)}% complete</span>
+                                        <strong>${p.revenue.toLocaleString()}</strong>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
             )}
         </div>

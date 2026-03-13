@@ -9,6 +9,7 @@ import ProjectDetail from './pages/projects/ProjectDetail'
 import ManageContractors from './pages/vendors/ManageContractors'
 import StockLevels from './pages/inventory/StockLevels'
 import MaterialRequests from './pages/inventory/MaterialRequests'
+import FinanceIndex from './pages/finance/FinanceIndex'
 import BudgetTracker from './pages/finance/BudgetTracker'
 import CashFlow from './pages/finance/CashFlow'
 import Profitability from './pages/finance/Profitability'
@@ -70,6 +71,7 @@ function App() {
                 <Route path="vendors/contractors" element={<RoleProtectedRoute allowedRoles={['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT', 'STORE_OFFICER']}><ManageContractors /></RoleProtectedRoute>} />
                 <Route path="inventory/stock-levels" element={<RoleProtectedRoute allowedRoles={['ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER', 'STORE_OFFICER']}><StockLevels /></RoleProtectedRoute>} />
                 <Route path="inventory/material-requests" element={<RoleProtectedRoute allowedRoles={['ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER', 'STORE_OFFICER']}><MaterialRequests /></RoleProtectedRoute>} />
+                <Route path="finance" element={<RoleProtectedRoute allowedRoles={['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT']}><FinanceIndex /></RoleProtectedRoute>} />
                 <Route path="finance/budget-tracker" element={<RoleProtectedRoute allowedRoles={['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT']}><BudgetTracker /></RoleProtectedRoute>} />
                 <Route path="finance/cash-flow" element={<RoleProtectedRoute allowedRoles={['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT']}><CashFlow /></RoleProtectedRoute>} />
                 <Route path="finance/profitability" element={<RoleProtectedRoute allowedRoles={['ADMIN', 'PROJECT_MANAGER', 'ACCOUNTANT']}><Profitability /></RoleProtectedRoute>} />

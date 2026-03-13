@@ -52,3 +52,33 @@ func (h *Handler) GetExpensesByMonth(c *gin.Context) {
 	}
 	utils.SuccessResponse(c, http.StatusOK, "Expenses by month retrieved", data)
 }
+
+func (h *Handler) GetOverrunAlerts(c *gin.Context) {
+	h.logAccess(c)
+	data, err := h.service.GetOverrunAlerts(c.Request.Context())
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve overrun alerts")
+		return
+	}
+	utils.SuccessResponse(c, http.StatusOK, "Overrun alerts retrieved", data)
+}
+
+func (h *Handler) GetCashFlow(c *gin.Context) {
+	h.logAccess(c)
+	data, err := h.service.GetCashFlow(c.Request.Context())
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve cash flow data")
+		return
+	}
+	utils.SuccessResponse(c, http.StatusOK, "Cash flow retrieved", data)
+}
+
+func (h *Handler) GetProfitabilityTrend(c *gin.Context) {
+	h.logAccess(c)
+	data, err := h.service.GetProfitabilityTrend(c.Request.Context())
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve profitability trend")
+		return
+	}
+	utils.SuccessResponse(c, http.StatusOK, "Profitability trend retrieved", data)
+}
