@@ -5,17 +5,23 @@ const baseURL = typeof import.meta.env?.VITE_API_URL === 'string' && import.meta
     ? import.meta.env.VITE_API_URL
     : 'http://localhost:8080/api/v1';
 
+// When true, backend sets httpOnly cookie on login; do not send Bearer token (cookie is sent automatically).
+export const useCookieAuth = typeof import.meta.env?.VITE_AUTH_USE_COOKIE === 'string' &&
+    import.meta.env.VITE_AUTH_USE_COOKIE === 'true';
+
 const api = axios.create({
     baseURL,
     headers: {
         'Content-Type': 'application/json',
     },
+    withCredentials: useCookieAuth,
 });
 
 export const apiBaseURL = baseURL;
 
-// Add a request interceptor to attach the JWT token to every request
+// Add a request interceptor to attach the JWT token to every request (skip when using httpOnly cookie)
 api.interceptors.request.use((config) => {
+    if (useCookieAuth) return config; // cookie is sent automatically
     const token = localStorage.getItem('token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -34,7 +40,7 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem('token');
+            if (!useCookieAuth) localStorage.removeItem('token');
             window.location.href = '/login';
         }
         return Promise.reject(error);

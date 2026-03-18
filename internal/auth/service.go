@@ -7,6 +7,7 @@ import (
 
 	"erp-project/internal/models"
 	"erp-project/internal/users"
+	"erp-project/pkg/utils"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -30,10 +31,10 @@ type service struct {
 }
 
 type RegisterRequest struct {
-	Name     string      `json:"name" binding:"required"`
-	Email    string      `json:"email" binding:"required,email"`
-	Password string      `json:"password" binding:"required,min=6"`
-	Role     models.Role `json:"role" binding:"required"`
+	Name     string `json:"name" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8"`
+	// Role is never accepted from client on public registration; use default only.
 }
 
 type LoginRequest struct {
@@ -50,6 +51,9 @@ func NewService(userRepo users.Repository, jwtSecret string, tokenExpiry time.Du
 }
 
 func (s *service) Register(ctx context.Context, req RegisterRequest) (*models.User, error) {
+	if err := utils.ValidatePassword(req.Password); err != nil {
+		return nil, err
+	}
 	// Check if user already exists
 	existingUser, _ := s.userRepo.GetUserByEmail(ctx, req.Email)
 	if existingUser != nil {
@@ -65,7 +69,7 @@ func (s *service) Register(ctx context.Context, req RegisterRequest) (*models.Us
 		Name:         req.Name,
 		Email:        req.Email,
 		PasswordHash: string(hashedPassword),
-		Role:         req.Role,
+		Role:         models.RoleSiteEngineer, // Default for public signup; admins use POST /users to set role.
 	}
 
 	err = s.userRepo.CreateUser(ctx, user)

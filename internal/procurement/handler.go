@@ -207,6 +207,8 @@ func (h *Handler) GetAllPurchaseRequests(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Purchase requests retrieved", prs)
 }
 
+const maxRecentOrdersLimit = 100
+
 // GetRecentOrders handles GET /api/v1/procurement/orders/recent?limit=...
 func (h *Handler) GetRecentOrders(c *gin.Context) {
 	limit := 10
@@ -214,6 +216,9 @@ func (h *Handler) GetRecentOrders(c *gin.Context) {
 		parsed, err := strconv.Atoi(q)
 		if err == nil && parsed > 0 {
 			limit = parsed
+			if limit > maxRecentOrdersLimit {
+				limit = maxRecentOrdersLimit
+			}
 		}
 	}
 

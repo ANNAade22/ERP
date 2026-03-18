@@ -5,6 +5,8 @@ import (
 	"errors"
 
 	"erp-project/internal/models"
+	"erp-project/pkg/utils"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -14,11 +16,11 @@ var (
 	ErrInvalidRole           = errors.New("invalid role")
 	ErrCannotDeleteSelf      = errors.New("cannot delete your own account")
 	ErrCannotDeactivateSelf  = errors.New("cannot deactivate your own account")
-	ErrWeakPassword        = errors.New("password must be at least 6 characters")
-	ErrWrongCurrentPassword = errors.New("current password is incorrect")
+	ErrWrongCurrentPassword  = errors.New("current password is incorrect")
 )
 
 type Service interface {
+	CreateUser(ctx context.Context, name, email, password string, role models.Role) (*models.User, error)
 	GetUserByID(ctx context.Context, id string) (*models.User, error)
 	ListUsers(ctx context.Context, roleFilter string, activeOnly *bool) ([]models.User, error)
 	UpdateUserRole(ctx context.Context, id string, role models.Role) (*models.User, error)
@@ -37,6 +39,34 @@ type service struct {
 
 func NewService(repo Repository) Service {
 	return &service{repo: repo}
+}
+
+func (s *service) CreateUser(ctx context.Context, name, email, password string, role models.Role) (*models.User, error) {
+	if !isValidRole(role) {
+		return nil, ErrInvalidRole
+	}
+	existing, _ := s.repo.GetUserByEmail(ctx, email)
+	if existing != nil {
+		return nil, ErrUserAlreadyExists
+	}
+	if err := utils.ValidatePassword(password); err != nil {
+		return nil, err
+	}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	user := &models.User{
+		Name:         name,
+		Email:        email,
+		PasswordHash: string(hashedPassword),
+		Role:         role,
+		Active:       true,
+	}
+	if err := s.repo.CreateUser(ctx, user); err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 func (s *service) GetUserByID(ctx context.Context, id string) (*models.User, error) {
@@ -76,8 +106,8 @@ func (s *service) UpdateUserRole(ctx context.Context, id string, role models.Rol
 }
 
 func (s *service) ResetUserPassword(ctx context.Context, id string, newPassword string) (*models.User, error) {
-	if len(newPassword) < 6 {
-		return nil, ErrWeakPassword
+	if err := utils.ValidatePassword(newPassword); err != nil {
+		return nil, err
 	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
@@ -117,8 +147,8 @@ func (s *service) ClearUserAvatar(ctx context.Context, userID string) (*models.U
 }
 
 func (s *service) ChangeOwnPassword(ctx context.Context, id string, currentPassword, newPassword string) error {
-	if len(newPassword) < 6 {
-		return ErrWeakPassword
+	if err := utils.ValidatePassword(newPassword); err != nil {
+		return err
 	}
 	user, err := s.repo.GetUserByID(ctx, id)
 	if err != nil {

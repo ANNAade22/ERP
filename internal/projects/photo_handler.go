@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,6 +20,10 @@ const (
 	maxPhotoSize      = 10 << 20 // 10 MB
 	allowedPhotoTypes = ".jpg,.jpeg,.png,.gif,.webp"
 )
+
+var allowedPhotoContentTypes = map[string]bool{
+	"image/jpeg": true, "image/png": true, "image/gif": true, "image/webp": true,
+}
 
 type PhotoHandler struct {
 	repo       PhotoRepository
@@ -69,6 +74,20 @@ func (h *PhotoHandler) UploadPhoto(c *gin.Context) {
 	}
 	if !h.allowedExt(file.Filename) {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid file type. Allowed: "+allowedPhotoTypes)
+		return
+	}
+	// Validate content by magic bytes (not just extension)
+	opened, err := file.Open()
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Could not read file")
+		return
+	}
+	buf := make([]byte, 512)
+	n, _ := io.ReadFull(opened, buf)
+	_ = opened.Close()
+	detected := http.DetectContentType(buf[:n])
+	if !allowedPhotoContentTypes[detected] {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid file content. Allowed: "+allowedPhotoTypes)
 		return
 	}
 

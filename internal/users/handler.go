@@ -3,6 +3,7 @@ package users
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,6 +19,10 @@ const (
 	maxAvatarSize      = 2 << 20  // 2 MB
 	allowedAvatarTypes = ".jpg,.jpeg,.png,.gif,.webp"
 )
+
+var allowedAvatarContentTypes = map[string]bool{
+	"image/jpeg": true, "image/png": true, "image/gif": true, "image/webp": true,
+}
 
 type Handler struct {
 	service   Service
@@ -39,6 +44,41 @@ func (h *Handler) allowedAvatarExt(name string) bool {
 		}
 	}
 	return false
+}
+
+// CreateUserRequest is the body for admin-only user creation.
+type CreateUserRequest struct {
+	Name     string      `json:"name" binding:"required"`
+	Email    string      `json:"email" binding:"required,email"`
+	Password string      `json:"password" binding:"required,min=8"`
+	Role     models.Role `json:"role" binding:"required"`
+}
+
+// CreateUser creates a new user with the given role (admin only). Use this instead of public register when role must be set.
+func (h *Handler) CreateUser(c *gin.Context) {
+	var req CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	user, err := h.service.CreateUser(c.Request.Context(), req.Name, req.Email, req.Password, req.Role)
+	if err != nil {
+		if errors.Is(err, ErrUserAlreadyExists) {
+			utils.ErrorResponse(c, http.StatusConflict, "A user with this email already exists")
+			return
+		}
+		if errors.Is(err, ErrInvalidRole) {
+			utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		if errors.Is(err, utils.ErrWeakPassword) {
+			utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to create user")
+		return
+	}
+	utils.SuccessResponse(c, http.StatusCreated, "User created successfully", user)
 }
 
 // ListUsers returns all users (admin only). Query: role= to filter by role.
@@ -78,7 +118,7 @@ type UpdateUserRoleRequest struct {
 }
 
 type ResetPasswordRequest struct {
-	Password string `json:"password" binding:"required,min=6"`
+	Password string `json:"password" binding:"required,min=8"`
 }
 
 type SetUserActiveRequest struct {
@@ -119,7 +159,7 @@ func (h *Handler) ResetUserPassword(c *gin.Context) {
 	}
 	user, err := h.service.ResetUserPassword(c.Request.Context(), id, req.Password)
 	if err != nil {
-		if errors.Is(err, ErrWeakPassword) {
+		if errors.Is(err, utils.ErrWeakPassword) {
 			utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -242,7 +282,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 
 type ChangePasswordRequest struct {
 	CurrentPassword string `json:"current_password" binding:"required"`
-	NewPassword     string `json:"new_password" binding:"required,min=6"`
+	NewPassword     string `json:"new_password" binding:"required,min=8"`
 }
 
 // ChangePassword allows the current user to change their own password.
@@ -265,7 +305,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 			utils.ErrorResponse(c, http.StatusBadRequest, "Current password is incorrect")
 			return
 		}
-		if errors.Is(err, ErrWeakPassword) {
+		if errors.Is(err, utils.ErrWeakPassword) {
 			utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -299,6 +339,18 @@ func (h *Handler) UploadProfileAvatar(c *gin.Context) {
 	}
 	if !h.allowedAvatarExt(file.Filename) {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid file type. Allowed: "+allowedAvatarTypes)
+		return
+	}
+	opened, err := file.Open()
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Could not read file")
+		return
+	}
+	buf := make([]byte, 512)
+	n, _ := io.ReadFull(opened, buf)
+	_ = opened.Close()
+	if !allowedAvatarContentTypes[http.DetectContentType(buf[:n])] {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid file content. Allowed: "+allowedAvatarTypes)
 		return
 	}
 
@@ -351,6 +403,18 @@ func (h *Handler) UploadUserAvatar(c *gin.Context) {
 	}
 	if !h.allowedAvatarExt(file.Filename) {
 		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid file type. Allowed: "+allowedAvatarTypes)
+		return
+	}
+	opened, err := file.Open()
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Could not read file")
+		return
+	}
+	buf := make([]byte, 512)
+	n, _ := io.ReadFull(opened, buf)
+	_ = opened.Close()
+	if !allowedAvatarContentTypes[http.DetectContentType(buf[:n])] {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid file content. Allowed: "+allowedAvatarTypes)
 		return
 	}
 

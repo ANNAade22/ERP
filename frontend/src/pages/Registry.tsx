@@ -3,6 +3,7 @@ import { Camera, ImageMinus, KeyRound, Loader2, Save, Trash2, UserCheck, UserX, 
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import api from '../utils/api'
+import { validatePassword } from '../utils/password'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import Avatar from '../components/Avatar'
@@ -86,13 +87,14 @@ export default function Registry() {
             toast.error('Name, email and password are required.')
             return
         }
-        if (addForm.password.length < 6) {
-            toast.error('Password must be at least 6 characters.')
+        const pwdErr = validatePassword(addForm.password)
+        if (pwdErr) {
+            toast.error(pwdErr)
             return
         }
         setAddLoading(true)
         try {
-            const regRes = await api.post<{ data?: { id?: string } }>('/auth/register', {
+            const regRes = await api.post<{ data?: { id?: string } }>('/users', {
                 name: addForm.name.trim(),
                 email: addForm.email.trim().toLowerCase(),
                 password: addForm.password,
@@ -285,8 +287,9 @@ export default function Registry() {
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!resetTarget) return
-        if (resetForm.password.length < 6) {
-            toast.error('Password must be at least 6 characters.')
+        const pwdErr = validatePassword(resetForm.password)
+        if (pwdErr) {
+            toast.error(pwdErr)
             return
         }
         if (resetForm.password !== resetForm.confirmPassword) {
@@ -607,8 +610,8 @@ export default function Registry() {
                                         className="form-input"
                                         value={addForm.password}
                                         onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))}
-                                        placeholder="Min 6 characters"
-                                        minLength={6}
+                                        placeholder="Min 8 chars, upper, lower, number"
+                                        minLength={8}
                                         required
                                     />
                                 </label>
@@ -739,8 +742,8 @@ export default function Registry() {
                                         className="form-input"
                                         value={resetForm.password}
                                         onChange={(e) => setResetForm((f) => ({ ...f, password: e.target.value }))}
-                                        placeholder="Min 6 characters"
-                                        minLength={6}
+                                        placeholder="Min 8 chars, upper, lower, number"
+                                        minLength={8}
                                         required
                                     />
                                 </label>
@@ -752,7 +755,7 @@ export default function Registry() {
                                         value={resetForm.confirmPassword}
                                         onChange={(e) => setResetForm((f) => ({ ...f, confirmPassword: e.target.value }))}
                                         placeholder="Re-enter password"
-                                        minLength={6}
+                                        minLength={8}
                                         required
                                     />
                                 </label>

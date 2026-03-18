@@ -26,16 +26,23 @@ func (h *Handler) ListInvoices(c *gin.Context) {
 	if status == "" {
 		status = "all"
 	}
+	const maxLimit, maxOffset = 100, 10000
 	limit := 50
 	if q := c.Query("limit"); q != "" {
 		if parsed, err := strconv.Atoi(q); err == nil && parsed > 0 {
 			limit = parsed
+			if limit > maxLimit {
+				limit = maxLimit
+			}
 		}
 	}
 	offset := 0
 	if q := c.Query("offset"); q != "" {
 		if parsed, err := strconv.Atoi(q); err == nil && parsed >= 0 {
 			offset = parsed
+			if offset > maxOffset {
+				offset = maxOffset
+			}
 		}
 	}
 	res, err := h.service.ListInvoices(c.Request.Context(), search, status, limit, offset)

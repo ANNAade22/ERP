@@ -11,23 +11,26 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const authCookieName = "auth_token"
+
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var tokenString string
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			utils.ErrorResponse(c, http.StatusUnauthorized, "Authorization header required")
+		if authHeader != "" {
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenString = parts[1]
+			}
+		}
+		if tokenString == "" {
+			tokenString, _ = c.Cookie(authCookieName)
+		}
+		if tokenString == "" {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "Authorization header or cookie required")
 			c.Abort()
 			return
 		}
-
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			utils.ErrorResponse(c, http.StatusUnauthorized, "Invalid authorization header format")
-			c.Abort()
-			return
-		}
-
-		tokenString := parts[1]
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

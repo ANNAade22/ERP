@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"erp-project/internal/attendance"
@@ -32,14 +33,18 @@ func main() {
 		log.Println("No .env file found, using environment variables")
 	}
 
-	// Connect to Database
+	// Connect to Database (set DB_SSLMODE=require in production)
+	sslMode := os.Getenv("DB_SSLMODE")
+	if sslMode == "" {
+		sslMode = "disable"
+	}
 	dbConfig := database.Config{
 		Host:     os.Getenv("DB_HOST"),
 		Port:     os.Getenv("DB_PORT"),
 		User:     os.Getenv("DB_USER"),
 		Password: os.Getenv("DB_PASSWORD"),
 		DBName:   os.Getenv("DB_NAME"),
-		SSLMode:  "disable",
+		SSLMode:  sslMode,
 	}
 
 	db, err := database.Connect(dbConfig)
@@ -69,7 +74,7 @@ func main() {
 	equipmentService := equipment.NewService(equipmentRepo, projectRepo, userRepo)
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "super-secret-key" // Fallback for MVP
+		log.Fatal("JWT_SECRET environment variable is required")
 	}
 	authService := auth.NewService(userRepo, jwtSecret, 24*time.Hour)
 
@@ -105,9 +110,14 @@ func main() {
 	// Setup Gin Router
 	r := gin.Default()
 
-	// Enable CORS
+	// CORS: allow only configured origins (set CORS_ORIGINS e.g. "http://localhost:3000,https://app.example.com")
+	corsOrigins := os.Getenv("CORS_ORIGINS")
+	if corsOrigins == "" {
+		corsOrigins = "http://localhost:3000,http://localhost:5173"
+	}
+	origins := strings.Split(strings.ReplaceAll(corsOrigins, " ", ""), ",")
 	r.Use(cors.New(cors.Config{
-		AllowAllOrigins:  true,
+		AllowOrigins:     origins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization", "Accept"},
 		AllowCredentials: true,
@@ -117,11 +127,13 @@ func main() {
 	// Routes
 	api := r.Group("/api/v1")
 	{
-		// Public routes
+		// Public routes (rate-limited to prevent brute force)
 		authGroup := api.Group("/auth")
+		authGroup.Use(middleware.AuthRateLimit(10))
 		{
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
+			authGroup.POST("/logout", authHandler.Logout)
 		}
 		// Avatar images: public so <img src> can load without auth (same as many profile pic systems)
 		api.GET("/users/:id/avatar", userHandler.ServeUserAvatar)
@@ -135,6 +147,7 @@ func main() {
 			protected.POST("/profile/change-password", userHandler.ChangePassword)
 			protected.GET("/users/assignable", middleware.RoleMiddleware(models.RoleAdmin, models.RoleProjectManager), userHandler.ListAssignableUsers)
 			protected.GET("/users", middleware.RoleMiddleware(models.RoleAdmin), userHandler.ListUsers)
+			protected.POST("/users", middleware.RoleMiddleware(models.RoleAdmin), userHandler.CreateUser)
 			protected.POST("/users/:id/avatar", middleware.RoleMiddleware(models.RoleAdmin), userHandler.UploadUserAvatar)
 			protected.DELETE("/users/:id/avatar", middleware.RoleMiddleware(models.RoleAdmin), userHandler.DeleteUserAvatar)
 			protected.PATCH("/users/:id/role", middleware.RoleMiddleware(models.RoleAdmin), userHandler.UpdateUserRole)

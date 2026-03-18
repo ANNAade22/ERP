@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import api from '../utils/api';
+import api, { useCookieAuth } from '../utils/api';
 
 interface User {
     id: string;
@@ -22,12 +22,39 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const COOKIE_TOKEN_SENTINEL = 'cookie';
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
+    const [token, setToken] = useState<string | null>(() =>
+        useCookieAuth ? null : localStorage.getItem('token')
+    );
     const [user, setUser] = useState<User | null>(null);
     const [isAuthReady, setIsAuthReady] = useState(false);
 
     useEffect(() => {
+        if (useCookieAuth) {
+            api.get<{ data?: { id?: string; name?: string; email?: string; role?: string; avatar_path?: string } }>('/profile')
+                .then((res) => {
+                    const d = res.data?.data;
+                    if (d?.id) {
+                        setToken(COOKIE_TOKEN_SENTINEL);
+                        setUser({
+                            id: d.id,
+                            email: d.email ?? '',
+                            role: d.role ?? '',
+                            exp: 0,
+                            name: d.name,
+                            avatar_path: d.avatar_path,
+                        });
+                    } else {
+                        setToken(null);
+                        setUser(null);
+                    }
+                })
+                .catch(() => { setToken(null); setUser(null); })
+                .finally(() => setIsAuthReady(true));
+            return;
+        }
         const stored = localStorage.getItem('token');
         if (stored) {
             try {
@@ -58,8 +85,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, []);
 
     useEffect(() => {
-        if (!isAuthReady) return;
-        if (token) {
+        if (!isAuthReady || useCookieAuth) return;
+        if (token && token !== COOKIE_TOKEN_SENTINEL) {
             try {
                 const decoded = jwtDecode<{ sub?: string; id?: string; email?: string; role?: string; exp?: number }>(token);
                 if ((decoded.exp ?? 0) * 1000 < Date.now()) {
@@ -76,14 +103,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 console.error('Invalid token', error);
                 logout();
             }
-        } else {
+        } else if (!token) {
             setUser(null);
         }
-    }, [token]);
+    }, [token, isAuthReady]);
 
     // When authenticated, fetch profile once to get name (and keep avatar via Avatar component + userId)
     useEffect(() => {
         if (!token || !isAuthReady) return;
+        if (useCookieAuth) return; // profile already used for initial state
         let cancelled = false;
         api.get<{ data?: { name?: string; avatar_path?: string } }>('/profile')
             .then((res) => {
@@ -102,11 +130,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, [token, isAuthReady]);
 
     const login = (newToken: string) => {
+        if (useCookieAuth) {
+            setToken(COOKIE_TOKEN_SENTINEL);
+            try {
+                const decoded = jwtDecode<{ sub?: string; id?: string; email?: string; role?: string; exp?: number }>(newToken);
+                setUser({
+                    id: decoded.sub ?? decoded.id ?? '',
+                    email: decoded.email ?? '',
+                    role: decoded.role ?? '',
+                    exp: decoded.exp ?? 0,
+                });
+            } catch {
+                setUser(null);
+            }
+            return;
+        }
         localStorage.setItem('token', newToken);
         setToken(newToken);
     };
 
     const logout = () => {
+        if (useCookieAuth) {
+            api.post('/auth/logout').catch(() => {});
+        }
         localStorage.removeItem('token');
         setToken(null);
         setUser(null);
