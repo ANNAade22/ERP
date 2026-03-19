@@ -35,13 +35,17 @@ api.interceptors.request.use((config) => {
     return Promise.reject(error);
 });
 
-// On 401, clear token and redirect to login so auth state is consistent across the app
+// On 401, clear token and redirect to login — but skip redirect for /profile (auth check) or when already on /login to avoid infinite reload loop
 api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
             if (!useCookieAuth) localStorage.removeItem('token');
-            window.location.href = '/login';
+            const isAuthCheck = typeof error.config?.url === 'string' && error.config.url.includes('/profile');
+            const isLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
+            if (!isAuthCheck && !isLoginPage) {
+                window.location.href = '/login';
+            }
         }
         return Promise.reject(error);
     }
