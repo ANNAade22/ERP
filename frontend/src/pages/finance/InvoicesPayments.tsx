@@ -312,9 +312,24 @@ export default function InvoicesPayments() {
 
     const handleViewInvoice = async (inv: Invoice) => {
         try {
-            const res = await api.get<{ success?: boolean; data?: Invoice & { payments?: { amount: number; payment_date: string; payment_method: string; reference_number: string }[] } }>(`/invoices/${inv.id}`)
+            type InvoicePayment = { amount: number; payment_date: string; payment_method: string; reference_number: string }
+            type PurchaseRequestDetail = {
+                id: string
+                created_at: string
+                requester?: { name: string }
+                items?: { material?: { name: string; unit?: string }; quantity: number; unit_price: number; total_price: number }[]
+                material?: { name: string }
+                quantity?: number
+                unit_price?: number
+                total_price?: number
+            }
+
+            const res = await api.get<{
+                success?: boolean
+                data?: Invoice & { payments?: InvoicePayment[]; purchase_request?: PurchaseRequestDetail }
+            }>(`/invoices/${inv.id}`)
             if (res.data?.success && res.data?.data) {
-                const d = res.data.data as Invoice & { payments?: unknown[]; purchase_request?: unknown }
+                const d = res.data.data
                 setViewDetail({ invoice: d, payments: d.payments, purchase_request: d.purchase_request })
                 setViewModalInvoice(inv)
             }
