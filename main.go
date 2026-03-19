@@ -110,12 +110,27 @@ func main() {
 	// Setup Gin Router
 	r := gin.Default()
 
-	// CORS: allow only configured origins (set CORS_ORIGINS e.g. "http://localhost:3000,https://app.example.com")
+	// CORS: allow only configured origins (set CORS_ORIGINS e.g. "http://localhost:3000,https://app.example.com" or "your-app.vercel.app")
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	if corsOrigins == "" {
 		corsOrigins = "http://localhost:3000,http://localhost:5173"
 	}
-	origins := strings.Split(strings.ReplaceAll(corsOrigins, " ", ""), ",")
+	raw := strings.Split(strings.ReplaceAll(corsOrigins, " ", ""), ",")
+	origins := make([]string, 0, len(raw))
+	for _, o := range raw {
+		o = strings.TrimSpace(o)
+		if o == "" {
+			continue
+		}
+		if o == "*" || strings.HasPrefix(o, "http://") || strings.HasPrefix(o, "https://") {
+			origins = append(origins, o)
+			continue
+		}
+		origins = append(origins, "https://"+o)
+	}
+	if len(origins) == 0 {
+		origins = []string{"http://localhost:3000", "http://localhost:5173"}
+	}
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     origins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
