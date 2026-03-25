@@ -89,11 +89,14 @@ After deployment you'll have:
    - Your backend base URL will look like `https://your-erp-api.onrender.com`
    - The frontend should use the API URL with prefix: **`https://your-erp-api.onrender.com/api/v1`**
 
-5. Seed demo data (optional):
-   - If you want demo users/data, run the repo scripts locally against Neon, or use a one-off command in Render.
-   - Available scripts at repo root include:
-     - `npm run seed:users`
-     - `npm run seed:finance`
+5. **Create the demo admin (required to log in):**  
+   Your Neon DB starts empty. From your **local machine** (with the repo cloned), run the Go seed **once** so it creates **admin@erp.com** and optional demo data. In a terminal at the **project root** set `DB_URL` to your Neon connection string, then run:
+   ```bash
+   set DB_URL=postgresql://neondb_owner:YOUR_PASSWORD@ep-xxx-pooler.xxx.aws.neon.tech/neondb?sslmode=require
+   go run cmd/seed/main.go
+   ```
+   (On macOS/Linux use `export DB_URL=...`.)  
+   This creates **admin@erp.com** with password **password123** (and vendors/projects if the script has them). Then you can log in to the live app with those credentials.
 
 ---
 
@@ -160,6 +163,7 @@ If you use the seed script that creates demo users, log in with those credential
 
 ## Troubleshooting
 
+- **"Backend not connected" / automatic logout after login**: The frontend is calling the wrong URL or the backend is returning 401. (1) In **Vercel** → your project → **Settings** → **Environment Variables**, set **`VITE_API_URL`** to your **Render** API URL, e.g. `https://your-service.onrender.com/api/v1` (must include `/api/v1`). (2) **Redeploy the frontend** (Vercel only uses env at build time). (3) In **Render**, set **`CORS_ORIGINS`** to your **exact** Vercel URL (e.g. `https://your-app.vercel.app`) and redeploy the backend.
 - **CORS errors**: Ensure `CORS_ORIGINS` includes the exact frontend origin (no trailing slash), and that you redeployed the backend after changing it.  
 - **401 on API calls**: Check that `VITE_API_URL` is correct and that the backend is running. For cookie auth, ensure the backend is configured for the same origin or correct cookie settings.  
 - **Blank page / wrong routes**: The frontend includes a `vercel.json` that redirects all routes to `index.html` for React Router; if you use another host, configure SPA fallback similarly.

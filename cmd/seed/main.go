@@ -14,6 +14,7 @@ import (
 	"erp-project/pkg/database"
 
 	"github.com/joho/godotenv"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -37,6 +38,26 @@ func main() {
 	}
 
 	ctx := context.Background()
+
+	// Bootstrap admin if no admin exists (for demo: admin@erp.com / password123)
+	var adminCount int64
+	if err := db.WithContext(ctx).Model(&models.User{}).Where("role = ?", models.RoleAdmin).Count(&adminCount).Error; err == nil && adminCount == 0 {
+		hash, err := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+		if err != nil {
+			log.Fatalf("bcrypt: %v", err)
+		}
+		admin := models.User{
+			Name:         "Admin",
+			Email:        "admin@erp.com",
+			PasswordHash: string(hash),
+			Role:         models.RoleAdmin,
+			Active:       true,
+		}
+		if err := db.WithContext(ctx).Create(&admin).Error; err != nil {
+			log.Fatalf("Create admin: %v", err)
+		}
+		log.Println("Created bootstrap admin: admin@erp.com / password123")
+	}
 
 	// Get first user for ManagerID and CreatedBy
 	var user models.User

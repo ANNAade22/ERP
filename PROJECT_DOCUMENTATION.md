@@ -1,8 +1,26 @@
-# Construction ERP — Project Documentation
+# Construction ERP — Client Documentation
 
-**Version:** 1.0  
-**Last Updated:** March 2025  
-**Audience:** Technical and Non-Technical Stakeholders
+**Version:** 1.1  
+**Last Updated:** 2026-03-14  
+**Audience:** Clients, stakeholders, and delivery teams
+
+This document explains what the Construction ERP system does, who it is for, how it works, and how to install and deploy it.
+
+---
+
+## Contents
+
+- **1. Project Overview**
+- **2. Key Features**
+- **3. System Architecture**
+- **4. Technologies Used**
+- **5. User Roles**
+- **6. Workflow / How the System Works**
+- **7. Installation / Setup Guide (Local)**
+- **8. Deployment Guide (Online Demo)**
+- **9. API Documentation**
+- **10. Security Considerations**
+- **11. Future Improvements**
 
 ---
 
@@ -10,542 +28,488 @@
 
 ### What the System Does
 
-**Construction ERP** is a full-stack web application designed for construction companies to manage their day-to-day operations in one place. The system brings together project management, workforce tracking, procurement, inventory, finance, and equipment maintenance into a single, role-based platform.
+**Construction ERP** is a web-based system for managing construction operations in one place. It supports:
+
+- **Project planning and tracking** (projects, milestones, photos)
+- **Workforce operations** (workers, daily attendance)
+- **Procurement and inventory** (vendors, purchase requests, stock movements)
+- **Finance** (expenses, budget tracking, invoices, payments, analytics)
+- **Equipment management** (equipment, maintenance, scheduling)
 
 ### Purpose of the Project
 
-The project aims to:
-
-- **Centralize operations** — Replace scattered spreadsheets and paper records with a unified digital system
-- **Improve visibility** — Give managers real-time insights into budgets, attendance, inventory, and project progress
-- **Streamline workflows** — From material requests to expense approval, the system supports structured processes
-- **Support accountability** — Role-based access ensures users see only what they need and can take actions appropriate to their role
+- **Operational control**: unify project, cost, and site operations in one system
+- **Real-time visibility**: dashboards and reporting endpoints for performance and risk
+- **Process consistency**: structured workflows for approvals and updates
+- **Access control**: role-based permissions to reduce errors and prevent unauthorized actions
 
 ### Who Will Use the System
 
 | User Type | Typical Use |
 |-----------|-------------|
-| **Administrators** | Full system control, user management, project setup |
-| **Project Managers** | Oversee projects, approve expenses, track milestones and equipment |
-| **Site Engineers** | Update project progress, mark attendance, request materials, upload photos |
-| **Accountants** | Manage expenses, budgets, invoices, and payments |
-| **Store Officers** | Manage vendors, inventory, stock movements, and material requests |
+| **Administrators** | Full system control; configure projects; manage users and permissions |
+| **Project Managers** | Oversee delivery; approve requests and statuses; track milestones, budgets, and equipment |
+| **Site Engineers** | Mark attendance; upload site photos; raise procurement requests; update progress |
+| **Accountants** | Record and review expenses; track profitability and cash flow; manage invoices and payments |
+| **Store Officers** | Manage vendors; maintain stock and materials; process material requests and receipts |
 
 ---
 
 ## 2. Key Features
 
-### 2.1 Dashboard
-
-- **Overview** — Total projects, active projects, total budget, spent amount, remaining budget, and utilization percentage
-- **Project summaries** — Per-project budget, spent, remaining, and % used
-- **Attendance summaries** — Workers per project, present/absent today, attendance rate
-- **Low stock alerts** — Materials below minimum levels with project name
-- **Procurement summary** — Pending requests, approved requests, total purchase value
-- **Equipment summary** — Total, available, and under-maintenance equipment
-- **Vendor summary** — Total, active, and preferred vendors
-
-### 2.2 Project Management
-
-- **Full CRUD** — Create, list, view, update, delete projects
-- **Project details** — Name, description, location, status, budget, dates, category, timeline, team size, assigned engineer and manager
-- **Milestones** — Define milestones per project with due dates, priority, assignee, progress, and status
-- **Gantt view** — Visual timeline of milestones across projects
-- **Project photos** — Upload and view site photos
-- **Project vendors** — View vendors associated with each project via expenses
-
-### 2.3 Attendance & Workers
-
-- **Worker management** — Create and manage workers
-- **Daily attendance** — Mark check-in and check-out per worker
-- **Attendance reports** — View by date or by worker
-- **Project-wise workers** — List workers assigned to each project
-
-### 2.4 Finance
-
-- **Budget Tracker** — Budget vs actual spending, add expenses by category
-- **Cash Flow** — Inflows and outflows by month
-- **Profitability** — Revenue, costs, margins
-- **Overrun Alerts** — Projects exceeding budget
-- **Invoices & Payments** — Create invoices, record payments, download PDF invoices
-- **Vendor spend** — Breakdown of spending by vendor
-- **Expense categories** — Labour, Material, Transport, Equipment, Overhead, Other
-
-### 2.5 Vendors / Contractors
-
-- **Vendor CRUD** — Create, list, view, update, delete vendors
-- **Vendor types** — KSO, Contractor, Supplier
-- **Vendor status** — Active, Preferred, Inactive
-- Search and filter vendors
-
-### 2.6 Inventory
-
-- **Stock Levels** — Materials per project, current stock, minimum stock
-- **Stock movements** — Stock-in and stock-out with history
-- **Low stock alerts** — Alerts when materials fall below minimum
-- **Material Requests** — Create purchase requests linked to projects and vendors
-
-### 2.7 Procurement
-
-- **Purchase requests** — Create, list, update material requests
-- **Status workflow** — Pending → Approved → Ordered → Received
-- **Pending requests** — List for approval (Project Manager / Admin)
-- **Recent orders** — Quick view of recent procurement activity
-
-### 2.8 Equipment
-
-- **Equipment list** — Add, edit, delete equipment (e.g., dump truck, excavator, crane)
-- **Maintenance** — Add and manage maintenance tasks per equipment
-- **Schedules** — Create and manage equipment schedules
-- **Equipment dashboard** — Upcoming maintenance and availability overview
-
-### 2.9 User Management (Registry)
-
-- **User list** — View all users (Admin only)
-- **Role assignment** — Assign roles (Admin, Project Manager, Site Engineer, Accountant, Store Officer)
-- **Status control** — Activate or deactivate users
-- **Password reset** — Admin can reset user passwords
-- **Avatar upload** — User profile photos
-
-### 2.10 Settings
-
-- **Profile** — Update name, phone
-- **Change password** — Change own password
+- **Dashboard (single API)**: overview KPIs + summaries for projects, attendance, low stock, procurement, equipment, and vendors
+- **Projects**: create/list/update projects, view project details, view vendors/workers/photos per project
+- **Milestones & Gantt**: milestones per project + Gantt-style milestone view + milestone dashboard stats
+- **Site Photos**: upload, list, download, and delete project photos
+- **Attendance**: worker creation, daily attendance marking, checkout, reports by date/worker
+- **Vendors**: vendor CRUD (used across procurement and finance)
+- **Procurement**: purchase requests with status progression (e.g., Pending → Approved → Ordered → Received)
+- **Inventory**: materials per project, stock in/out, movement history, low-stock alerts
+- **Finance**:
+  - expenses (create/list/status updates)
+  - analytics endpoints (budget overview, cash flow, profitability, overrun alerts, vendor spend, trends)
+  - invoices & payments (create invoice, record payment, download invoice)
+- **Equipment**: equipment CRUD, maintenance tasks, scheduling, dashboard overview
+- **User & Profile Management**: profile updates, password changes, admin user management, avatar upload/serve
 
 ---
 
 ## 3. System Architecture
 
-The system follows a **three-tier architecture**:
+The system uses a standard **frontend + API + database** structure:
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         FRONTEND (React + Vite)                      │
-│  React 19, TypeScript, React Router, Axios, Lucide Icons, driver.js  │
-│  Runs on port 5173 (default)                                         │
-└─────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    │ HTTP / JSON (REST API)
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                         BACKEND (Go + Gin)                           │
-│  JWT auth, CORS, role-based middleware, RESTful API                  │
-│  Runs on port 8080 (default)                                         │
-└─────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    │ GORM
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                         DATABASE (PostgreSQL)                        │
-│  Users, Projects, Milestones, Workers, Attendance, Expenses,         │
-│  Vendors, Materials, Purchase Requests, Stock Movements, Equipment   │
-└─────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│ Frontend (React + Vite)                                            │
+│ - SPA with role-protected routes                                   │
+│ - Axios API client (supports Bearer token or cookie auth)           │
+└───────────────────────────────────────────────────────────────────┘
+                    │ HTTPS / JSON
+                    ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ Backend (Go + Gin)                                                 │
+│ - REST API under /api/v1                                           │
+│ - JWT auth middleware + role middleware                            │
+│ - Upload handling for avatars & project photos                      │
+└───────────────────────────────────────────────────────────────────┘
+                    │ SQL (GORM)
+                    ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ Database (PostgreSQL)                                              │
+│ - Users, Projects, Milestones, Attendance, Expenses, Vendors,       │
+│   Inventory, Procurement, Equipment, Invoices/Payments              │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 ### Frontend
 
-- **Single-page application (SPA)** — React with client-side routing
-- **API client** — Axios with base URL `http://localhost:8080/api/v1` (configurable via `VITE_API_URL`)
-- **Auth** — JWT stored in `localStorage`, sent as `Authorization: Bearer <token>` on every API request
+- **React SPA** with routes such as `/dashboard`, `/projects`, `/finance`, etc.
+- **API Base URL** is configurable via `VITE_API_URL` (defaults to `http://localhost:8080/api/v1`).
+- **Authentication modes**:
+  - **Bearer token** (default): stores JWT in `localStorage` and sends `Authorization: Bearer ...`
+  - **httpOnly cookie auth** (optional): enabled with `VITE_AUTH_USE_COOKIE=true` + backend `AUTH_USE_HTTPONLY_COOKIE=true`
 
 ### Backend
 
-- **RESTful API** — All endpoints under `/api/v1`
-- **Gin** — HTTP framework
-- **GORM** — ORM for PostgreSQL; auto-migration for models
-- **Layered design** — Handlers → Services → Repositories
+- **Go (Gin)** REST API grouped under `/api/v1`
+- **Middleware**:
+  - auth middleware validates JWT and extracts user claims
+  - role middleware restricts sensitive endpoints by role
+- **CORS** is controlled via `CORS_ORIGINS` (defaults to `http://localhost:3000,http://localhost:5173`)
 
 ### Database
 
-- **PostgreSQL** — Primary data store
-- **GORM** — Migrations run at startup; tables created automatically
+- PostgreSQL database accessed via **GORM**
+- On startup, the backend runs **auto-migration** to create/update tables
+- Connection supports:
+  - **`DB_URL`** (preferred for hosted DBs)
+  - **`DATABASE_URL`**
+  - or individual `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSLMODE`
 
 ---
 
 ## 4. Technologies Used
 
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| **Frontend** | React 19 | UI components and state |
-| | TypeScript | Type safety |
-| | Vite 6 | Build tool and dev server |
-| | React Router 7 | Client-side routing |
-| | Axios | HTTP client |
-| | Lucide React | Icons |
-| | driver.js | In-app tours |
-| | react-hot-toast | Notifications |
-| | jwt-decode | Decode JWT for user info |
-| **Backend** | Go 1.25 | Programming language |
-| | Gin | Web framework |
-| | GORM | ORM and migrations |
-| | golang-jwt/jwt | JWT creation and validation |
-| | gofpdf | PDF generation (invoices) |
-| | godotenv | Environment variables |
-| **Database** | PostgreSQL | Relational database |
-| **DevOps** | concurrently | Run frontend + backend together |
-| | Node.js | Scripts (seed users) |
+### Frontend
+
+- **React 19 + TypeScript**: UI and type safety
+- **Vite**: dev server and build tooling
+- **React Router**: routing and route guards
+- **Axios**: API calls (supports credentials for cookie auth)
+- **driver.js**: guided tours / onboarding
+- **lucide-react**: icons
+
+### Backend
+
+- **Go**: backend language
+- **Gin**: HTTP API framework
+- **GORM + Postgres driver**: ORM and migrations
+- **JWT (HMAC)**: authentication tokens
+- **bcrypt**: password hashing
+- **gofpdf**: invoice PDF generation
+- **godotenv**: load env vars in local dev
+
+### Database
+
+- **PostgreSQL**: relational database for all core records
 
 ---
 
 ## 5. User Roles
 
-| Role | Key Permissions | Accessible Areas |
-|------|-----------------|------------------|
-| **ADMIN** | Full system access, user management, all create/update/delete | All modules, Registry, Settings |
-| **PROJECT_MANAGER** | Manage projects, milestones, approve expenses, equipment | Projects, Gantt, Equipment, Finance, Vendors, Inventory, Attendance, Dashboard |
-| **SITE_ENGINEER** | Create workers, mark attendance, upload photos, create PRs | Projects, Gantt, Attendance, Stock Levels, Material Requests, Dashboard |
-| **ACCOUNTANT** | Manage expenses, budgets, invoices | Vendors, Finance (Budget, Cash Flow, Profitability, Overruns, Invoices), Dashboard |
-| **STORE_OFFICER** | Manage vendors, materials, stock, purchase requests | Vendors, Stock Levels, Material Requests, Dashboard |
+The system uses five roles, enforced both in the UI and in API middleware:
 
-### Role-Based Route Protection
-
-- **Protected routes** — Require authentication (JWT)
-- **Role-protected routes** — Require specific roles; unauthorized users are redirected
+| Role | Core Responsibilities | Examples of Restricted Actions |
+|------|------------------------|-------------------------------|
+| **ADMIN** | System administration | Manage users/roles; create/delete projects |
+| **PROJECT_MANAGER** | Delivery oversight | Approve/update statuses; manage milestones; manage equipment |
+| **SITE_ENGINEER** | Site execution | Mark attendance; upload project photos; create purchase requests |
+| **ACCOUNTANT** | Financial operations | Create expenses; manage invoices & payments; finance analytics |
+| **STORE_OFFICER** | Store & procurement operations | Create/update vendors; manage materials & stock; update PR statuses |
 
 ---
 
 ## 6. Workflow / How the System Works
 
-### 6.1 Login Flow
+### Authentication and Access
 
-1. User opens the application
-2. If not logged in → redirect to `/login`
-3. User enters email and password
-4. Backend validates credentials, returns JWT
-5. Frontend stores JWT in `localStorage`, redirects to Dashboard
-6. All subsequent API calls include `Authorization: Bearer <token>`
+1. User navigates to the web app.
+2. If not authenticated, the app redirects to **Login**.
+3. On login, backend returns a JWT token and (optionally) sets a secure **httpOnly cookie**.
+4. Frontend uses either:
+   - **Bearer auth**: stores token and sends it on every API request, or
+   - **Cookie auth**: sends cookies automatically (`withCredentials`) and does not store token in `localStorage`.
 
-### 6.2 Typical User Journey (Project Manager)
+### Typical Operational Flow (High Level)
 
-1. **Login** → Dashboard shows overview
-2. **Projects** → Open a project → View milestones, photos, vendors on project
-3. **Gantt & Milestones** → Review and update milestone progress
-4. **Procurement** → Approve pending material requests
-5. **Finance** → Review budget tracker, overrun alerts, vendor spend
-6. **Equipment** → Check maintenance schedule and equipment availability
-
-### 6.3 Typical User Journey (Site Engineer)
-
-1. **Login** → Dashboard shows low stock and procurement summary
-2. **Attendance** → Mark workers present, record check-in/check-out
-3. **Projects** → Open project → Add milestone progress, upload site photos
-4. **Material Requests** → Create purchase request for materials
-5. **Stock Levels** → Check current inventory
-
-### 6.4 Procurement Workflow
-
-1. **Site Engineer / Store Officer** creates a purchase request (PENDING)
-2. **Project Manager / Admin** approves request (APPROVED)
-3. **Store Officer** updates to ORDERED when order is placed
-4. **Store Officer** updates to RECEIVED and performs stock-in
-
-### 6.5 Expense Workflow
-
-1. **Accountant** creates an expense linked to project and vendor
-2. **Project Manager / Admin** approves or rejects (PENDING → APPROVED)
+- **Setup** (Admin): create projects, configure users/roles.
+- **Execution** (Site Engineer): mark attendance, upload site photos, raise purchase requests.
+- **Store/Procurement** (Store Officer + PM/Admin): manage vendors, process requests, stock-in materials upon receipt.
+- **Finance** (Accountant + PM/Admin): record expenses, manage invoices/payments, monitor budgets and overruns.
+- **Oversight** (PM/Admin): dashboard KPIs, project summaries, overrun alerts, milestone tracking.
 
 ---
 
-## 7. Installation / Setup Guide
+## 7. Installation / Setup Guide (Local)
 
 ### Prerequisites
 
-- **Node.js** (v18+)
+- **Node.js** (LTS recommended)
 - **Go** (1.25+)
-- **PostgreSQL** (12+)
-- **npm** (comes with Node.js)
+- **PostgreSQL**
 
-### Step 1: Clone the Repository
+### 7.1 Configure Environment Variables
 
-```bash
-git clone <repository-url>
-cd erp-project
-```
-
-### Step 2: Database Setup
-
-1. Create a PostgreSQL database (e.g. `erp`)
-2. Create a `.env` file in the project root:
+Create a `.env` file in the repository root (recommended: copy from `.env.example`) and set at least:
 
 ```env
+# Database
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=your_password
-DB_NAME=erp
-JWT_SECRET=your-secret-key-min-32-chars
+DB_NAME=erp_db
+DB_SSLMODE=disable
+
+# Auth (required)
+JWT_SECRET=your-secret-at-least-32-chars
+
+# Server
 PORT=8080
+
+# Optional
 UPLOAD_DIR=./uploads
+CORS_ORIGINS=http://localhost:5173
+AUTH_USE_HTTPONLY_COOKIE=false
 ```
 
-### Step 3: Install Dependencies
+### 7.2 Install Dependencies
 
 ```bash
 npm install
 cd frontend && npm install && cd ..
 ```
 
-### Step 4: Run the Application
-
-**Option A: Run backend and frontend together**
+### 7.3 Run the System
 
 ```bash
+# Runs backend (Go) + frontend (Vite) together
 npm run dev
 ```
 
-**Option B: Run separately**
+Or run separately:
 
 ```bash
-# Terminal 1 — Backend
 npm run backend
-
-# Terminal 2 — Frontend
 npm run frontend
 ```
 
-- **Backend:** http://localhost:8080
-- **Frontend:** http://localhost:5173
+- **Backend**: `http://localhost:8080`
+- **Frontend**: `http://localhost:5173`
 
-### Step 5: Seed Demo Data (Optional)
+### 7.4 Seed Demo Data (Optional)
 
 ```bash
-# 1. Seed demo users (backend must be running)
+# Backend must be running for user seeding
 npm run seed:users
 
-# 2. Seed vendors, projects, materials, expenses, equipment (requires Go)
-go run cmd/seed/main.go
-# or: npm run seed:finance
+# Seeds finance/procurement/inventory demo data directly into DB
+npm run seed:finance
 ```
 
-**Demo credentials (after seed:users):**
+**Demo credentials created by `npm run seed:users`:**
 
-- Admin: `demo-admin@erp.com` / `Demo123!`
-- Project Manager: `demo-pm@erp.com` / `Demo123!`
-- Site Engineer: `demo-engineer@erp.com` / `Demo123!`
-- Accountant: `demo-accountant@erp.com` / `Demo123!`
-- Store Officer: `demo-store@erp.com` / `Demo123!`
-
-### Optional: Frontend API URL
-
-If the backend runs on a different host/port, set in `frontend/.env`:
-
-```env
-VITE_API_URL=http://localhost:8080/api/v1
-```
+- `demo-admin@erp.com` / `Demo123!`
+- `demo-pm@erp.com` / `Demo123!`
+- `demo-engineer@erp.com` / `Demo123!`
+- `demo-accountant@erp.com` / `Demo123!`
+- `demo-store@erp.com` / `Demo123!`
 
 ---
 
-## 8. API Documentation
+## 8. Deployment Guide (Online Demo)
 
-**Base URL:** `http://localhost:8080/api/v1`
+For a hosted demo, the project includes a practical deployment guide in `DEPLOY.md`.
 
-**Authentication:** All protected endpoints require:
+**Recommended demo stack:**
 
-```
-Authorization: Bearer <jwt_token>
-```
+- **Database**: Neon (PostgreSQL)
+- **Backend**: Render (Go API)
+- **Frontend**: Vercel (Vite / React)
 
-### 8.1 Authentication (Public)
+**Key points to be aware of:**
+
+- Backend expects **`JWT_SECRET`** to be set (required).
+- For hosted Postgres, prefer **`DB_URL`** (full connection string) or `DATABASE_URL`.
+- Configure backend **CORS** using `CORS_ORIGINS` (must match the frontend origin exactly).
+- Set frontend `VITE_API_URL` to your backend URL including `/api/v1`.
+
+---
+
+## 9. API Documentation
+
+**Base path:** `/api/v1`  
+**Auth:** Most endpoints require authentication via either:
+
+- **Bearer token**: `Authorization: Bearer <token>`, or
+- **Cookie auth**: `AUTH_USE_HTTPONLY_COOKIE=true` (backend sets `auth_token` cookie on login)
+
+### 9.1 Auth (Public)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/auth/register` | Register a new user |
-| POST | `/auth/login` | Login; returns JWT |
+| POST | `/auth/register` | Register a new user (default role is Site Engineer) |
+| POST | `/auth/login` | Login; returns JWT and optionally sets httpOnly cookie |
+| POST | `/auth/logout` | Logout (clears cookie when cookie auth is enabled) |
 
-**Login Request Example:**
+**Login request (example):**
 
 ```json
-POST /api/v1/auth/login
-Content-Type: application/json
-
 {
   "email": "demo-admin@erp.com",
   "password": "Demo123!"
 }
 ```
 
-**Login Response Example:**
+**Login response (example):**
 
 ```json
 {
   "success": true,
   "message": "Login successful",
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIs..."
-  }
+  "data": { "token": "eyJhbGciOiJIUzI1NiIs..." }
 }
 ```
 
-### 8.2 Projects
+### 9.2 User & Profile (Protected)
 
-| Method | Endpoint | Description | Roles |
-|--------|----------|-------------|-------|
-| GET | `/projects` | List all projects | Authenticated |
-| GET | `/projects/:id` | Get project details | Authenticated |
-| POST | `/projects` | Create project | Admin |
-| PUT | `/projects/:id` | Update project | Admin, Project Manager |
-| DELETE | `/projects/:id` | Delete project | Admin |
-| GET | `/projects/:id/milestones` | List project milestones | Authenticated |
-| POST | `/projects/:id/milestones` | Create milestone | Admin, Project Manager |
-| GET | `/projects/:id/vendors` | Vendors on project | Authenticated |
-| GET | `/projects/:id/workers` | Workers on project | Authenticated |
-| GET | `/projects/:id/photos` | List photos | Authenticated |
-| POST | `/projects/:id/photos` | Upload photo | Admin, Project Manager, Site Engineer |
+| Method | Endpoint | Notes |
+|--------|----------|-------|
+| GET | `/profile` | Current user profile |
+| PATCH | `/profile` | Update name/phone/etc. |
+| POST | `/profile/change-password` | Change password |
+| GET | `/users` | Admin only |
+| GET | `/users/assignable` | Admin + Project Manager (assignable list) |
+| PATCH | `/users/:id/role` | Admin only |
+| PATCH | `/users/:id/status` | Admin only |
+| PATCH | `/users/:id/password` | Admin only |
+| DELETE | `/users/:id` | Admin only |
+| GET | `/users/:id/avatar` | Public image endpoint |
+| POST | `/users/:id/avatar` | Admin only |
+| DELETE | `/users/:id/avatar` | Admin only |
 
-### 8.3 Vendors
-
-| Method | Endpoint | Description | Roles |
-|--------|----------|-------------|-------|
-| GET | `/vendors` | List all vendors | Authenticated |
-| GET | `/vendors/:id` | Get vendor | Authenticated |
-| POST | `/vendors` | Create vendor | Admin, Store Officer |
-| PUT | `/vendors/:id` | Update vendor | Admin, Store Officer |
-| DELETE | `/vendors/:id` | Delete vendor | Admin, Store Officer |
-
-### 8.4 Expenses
-
-| Method | Endpoint | Description | Roles |
-|--------|----------|-------------|-------|
-| GET | `/expenses` | List expenses (by project) | Authenticated |
-| POST | `/expenses` | Create expense | Admin, Accountant |
-| GET | `/expenses/:id` | Get expense | Authenticated |
-| PATCH | `/expenses/:id/status` | Update status | Admin, Project Manager |
-| DELETE | `/expenses/:id` | Delete expense | Admin |
-| GET | `/expenses/summary` | Project expense summary | Authenticated |
-| GET | `/expenses/breakdown` | Category breakdown | Authenticated |
-
-### 8.5 Finance
-
-| Method | Endpoint | Description | Roles |
-|--------|----------|-------------|-------|
-| GET | `/finance/budget-overview` | Budget overview | Admin, Project Manager, Accountant |
-| GET | `/finance/profitability` | Profitability data | Admin, Project Manager, Accountant |
-| GET | `/finance/cash-flow` | Cash flow by month | Admin, Project Manager, Accountant |
-| GET | `/finance/overrun-alerts` | Projects over budget | Admin, Project Manager, Accountant |
-| GET | `/finance/vendor-spend` | Spend by vendor | Admin, Project Manager, Accountant |
-| GET | `/finance/expenses-by-month` | Expenses by month | Admin, Project Manager, Accountant |
-
-### 8.6 Inventory
-
-| Method | Endpoint | Description | Roles |
-|--------|----------|-------------|-------|
-| GET | `/inventory/materials` | List materials (by project) | Authenticated |
-| POST | `/inventory/materials` | Create material | Admin, Store Officer |
-| GET | `/inventory/materials/:id` | Get material | Authenticated |
-| DELETE | `/inventory/materials/:id` | Delete material | Admin, Store Officer |
-| POST | `/inventory/stock-in` | Stock in | Admin, Store Officer |
-| POST | `/inventory/stock-out` | Stock out | Admin, Store Officer |
-| GET | `/inventory/movements/:materialId` | Stock movements | Authenticated |
-| GET | `/inventory/low-stock` | Low stock alerts | Authenticated |
-
-### 8.7 Procurement
-
-| Method | Endpoint | Description | Roles |
-|--------|----------|-------------|-------|
-| GET | `/procurement/requests` | List by project | Authenticated |
-| GET | `/procurement/requests/all` | List all | Authenticated |
-| POST | `/procurement/requests` | Create purchase request | Admin, Site Engineer, Store Officer |
-| PATCH | `/procurement/requests/:id` | Update PR | Admin, Site Engineer, Store Officer |
-| PATCH | `/procurement/requests/:id/status` | Update status | Admin, Project Manager, Store Officer |
-| GET | `/procurement/requests/pending` | Pending requests | Admin, Project Manager |
-
-### 8.8 Equipment
-
-| Method | Endpoint | Description | Roles |
-|--------|----------|-------------|-------|
-| GET | `/equipment` | List equipment | Authenticated |
-| POST | `/equipment` | Create equipment | Admin, Project Manager |
-| GET | `/equipment/:id` | Get equipment | Authenticated |
-| PUT | `/equipment/:id` | Update equipment | Admin, Project Manager |
-| DELETE | `/equipment/:id` | Delete equipment | Admin, Project Manager |
-| GET | `/equipment/dashboard` | Equipment dashboard | Authenticated |
-| GET | `/equipment/:id/maintenance` | List maintenance | Authenticated |
-| POST | `/equipment/:id/maintenance` | Create maintenance | Admin, Project Manager |
-
-### 8.9 Dashboard
+### 9.3 Dashboard (Protected)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/dashboard` | Unified dashboard data |
+| GET | `/dashboard` | Unified dashboard payload (overview + summaries + alerts) |
 
-### 8.10 Users & Profile
+### 9.4 Projects & Milestones (Protected)
 
-| Method | Endpoint | Description | Roles |
-|--------|----------|-------------|-------|
-| GET | `/profile` | Current user profile | Authenticated |
-| PATCH | `/profile` | Update profile | Authenticated |
-| POST | `/profile/change-password` | Change password | Authenticated |
-| GET | `/users` | List users | Admin |
-| PATCH | `/users/:id/role` | Update role | Admin |
-| PATCH | `/users/:id/status` | Set active/inactive | Admin |
+| Method | Endpoint | Notes |
+|--------|----------|------|
+| GET | `/projects` | List projects |
+| POST | `/projects` | Admin only |
+| GET | `/projects/:id` | Project details |
+| PUT | `/projects/:id` | Admin, Project Manager |
+| DELETE | `/projects/:id` | Admin only |
+| GET | `/projects/:id/milestones` | List milestones for project |
+| POST | `/projects/:id/milestones` | Admin, Project Manager |
+| GET | `/projects/:id/photos` | List photos |
+| POST | `/projects/:id/photos` | Admin, Project Manager, Site Engineer |
+| GET | `/projects/:id/photos/:photoId/file` | Download/serve photo |
+| DELETE | `/projects/:id/photos/:photoId` | Admin, Project Manager, Site Engineer |
+| GET | `/projects/:id/vendors` | Vendors associated with project |
+| GET | `/projects/:id/workers` | Workers on project |
+| GET | `/milestones/dashboard-stats` | Milestone dashboard stats |
+| GET | `/milestones/:id` | Get milestone |
+| PUT | `/milestones/:id` | Admin, Project Manager |
+| DELETE | `/milestones/:id` | Admin, Project Manager |
+
+### 9.5 Attendance (Protected)
+
+| Method | Endpoint | Notes |
+|--------|----------|------|
+| POST | `/workers` | Admin, Site Engineer |
+| POST | `/attendance` | Admin, Site Engineer |
+| PATCH | `/attendance/:id/checkout` | Admin, Site Engineer |
+| GET | `/attendance` | Attendance by date |
+| GET | `/attendance/worker/:workerId` | Attendance by worker |
+
+### 9.6 Vendors (Protected)
+
+| Method | Endpoint | Notes |
+|--------|----------|------|
+| GET | `/vendors` | List vendors |
+| GET | `/vendors/:id` | Vendor details |
+| POST | `/vendors` | Admin, Store Officer |
+| PUT | `/vendors/:id` | Admin, Store Officer |
+| DELETE | `/vendors/:id` | Admin, Store Officer |
+
+### 9.7 Procurement (Protected)
+
+| Method | Endpoint | Notes |
+|--------|----------|------|
+| POST | `/procurement/requests` | Admin, Site Engineer, Store Officer |
+| GET | `/procurement/requests` | List by project |
+| GET | `/procurement/requests/all` | List all |
+| GET | `/procurement/requests/pending` | Admin, Project Manager |
+| GET | `/procurement/requests/:id` | Request details |
+| PATCH | `/procurement/requests/:id` | Admin, Site Engineer, Store Officer |
+| PATCH | `/procurement/requests/:id/status` | Admin, Project Manager, Store Officer |
+| GET | `/procurement/orders/recent` | Recent orders |
+
+### 9.8 Inventory (Protected)
+
+| Method | Endpoint | Notes |
+|--------|----------|------|
+| POST | `/inventory/materials` | Admin, Store Officer |
+| GET | `/inventory/materials` | List materials (by project) |
+| GET | `/inventory/materials/:id` | Material details |
+| DELETE | `/inventory/materials/:id` | Admin, Store Officer |
+| POST | `/inventory/stock-in` | Admin, Store Officer |
+| POST | `/inventory/stock-out` | Admin, Store Officer |
+| GET | `/inventory/movements/:materialId` | Movement history |
+| GET | `/inventory/low-stock` | Alerts |
+
+### 9.9 Expenses (Protected)
+
+| Method | Endpoint | Notes |
+|--------|----------|------|
+| POST | `/expenses` | Admin, Accountant |
+| GET | `/expenses` | List (supports filtering by project) |
+| GET | `/expenses/summary` | Summary by project |
+| GET | `/expenses/breakdown` | Breakdown by category |
+| GET | `/expenses/:id` | Expense details |
+| PATCH | `/expenses/:id/status` | Admin, Project Manager |
+| DELETE | `/expenses/:id` | Admin only |
+
+### 9.10 Invoices & Finance (Protected)
+
+**Invoices (Admin, Project Manager, Accountant):**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/invoices` | List invoices |
+| GET | `/invoices/for-payment` | Invoices due for payment |
+| POST | `/invoices` | Create invoice |
+| GET | `/invoices/:id` | Invoice details |
+| GET | `/invoices/:id/download` | Download invoice PDF |
+| POST | `/invoices/:id/payments` | Record payment |
+
+**Finance analytics (Admin, Project Manager, Accountant):**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/finance/budget-overview` | Budget overview |
+| GET | `/finance/profitability` | Profitability snapshot |
+| GET | `/finance/expenses-by-month` | Expenses by month |
+| GET | `/finance/overrun-alerts` | Over-budget projects |
+| GET | `/finance/cash-flow` | Cash flow |
+| GET | `/finance/profitability-trend` | Profitability trend |
+| GET | `/finance/vendor-spend` | Spend by vendor |
+
+### 9.11 Equipment (Protected)
+
+| Method | Endpoint | Notes |
+|--------|----------|------|
+| GET | `/equipment` | List equipment |
+| POST | `/equipment` | Admin, Project Manager |
+| GET | `/equipment/:id` | Equipment details |
+| PUT | `/equipment/:id` | Admin, Project Manager |
+| DELETE | `/equipment/:id` | Admin, Project Manager |
+| GET | `/equipment/dashboard` | Dashboard metrics |
+| GET | `/equipment/scheduled` | Scheduled items |
+| POST | `/equipment/scheduled` | Admin, Project Manager |
+| PUT | `/equipment/scheduled/:id` | Admin, Project Manager |
+| DELETE | `/equipment/scheduled/:id` | Admin, Project Manager |
+| GET | `/equipment/:id/maintenance` | Maintenance tasks |
+| POST | `/equipment/:id/maintenance` | Admin, Project Manager |
+| PATCH | `/maintenance/:id` | Admin, Project Manager |
+| DELETE | `/maintenance/:id` | Admin, Project Manager |
 
 ---
 
-## 9. Security Considerations
+## 10. Security Considerations
 
-### 9.1 Authentication
+### Authentication
 
-- **JWT** — Tokens are issued on login; contain user ID, email, role
-- **Token lifetime** — Default 24 hours; stored in `localStorage` (client)
-- **Token validation** — Middleware validates `Authorization: Bearer <token>` on every protected request
-- **401 handling** — On invalid/expired token, frontend clears token and redirects to login
+- **JWT (HMAC)** is used for authentication.
+- Backend enforces authentication on protected routes via middleware.
+- **JWT_SECRET is required** (backend will not start without it).
 
-### 9.2 Data Protection
+### Password Protection
 
-- **Passwords** — Hashed with bcrypt before storage; never returned in API responses
-- **Environment variables** — Sensitive values (DB credentials, JWT secret) in `.env`, not in code
-- **HTTPS** — Recommended in production for all traffic
+- Passwords are stored as **bcrypt hashes**.
+- Password strength validation is enforced during registration.
 
-### 9.3 Access Control
+### Access Control
 
-- **Role-based middleware** — Sensitive endpoints check `userRole` from JWT
-- **Public routes** — Only `/auth/register` and `/auth/login` are public
-- **Avatar images** — Served publicly via `/users/:id/avatar` (profile pictures)
+- Sensitive actions are protected by **role-based authorization**.
+- The frontend also hides/restricts pages based on role, but the **API is the source of truth**.
 
-### 9.4 CSRF
+### Data Transport and CORS
 
-- **Bearer token in header** — Primary auth uses `Authorization: Bearer <token>`; cross-site request forgery (CSRF) risk is lower because the token is not sent automatically with same-origin requests from other sites.
-- **Cookie-based auth** — When using optional httpOnly cookie auth (`AUTH_USE_HTTPONLY_COOKIE`), use `SameSite=Lax` (or `Strict`) on the cookie. CSRF protection (e.g. double-submit cookie or CSRF token) is recommended for any state-changing flows that rely on cookie-based sessions.
+- Use **HTTPS** in production.
+- Configure **CORS** via `CORS_ORIGINS` to only allow trusted frontend origins.
 
-### 9.5 Configuration
+### Token Storage Options
 
-- **Environment variables** — Copy `.env.example` to `.env` and set values. In production, **JWT_SECRET** is required (no default). Set **DB_SSLMODE=require** (or `verify-full`) for PostgreSQL. Set **CORS_ORIGINS** to your frontend origin(s). See `.env.example` for all options.
-
-### 9.6 Recommendations for Production
-
-1. Set `JWT_SECRET` (required; no default in production)
-2. Enable HTTPS
-3. Set `DB_SSLMODE=require` for PostgreSQL
-4. Set `CORS_ORIGINS` to your frontend origin(s)
-5. Rate limiting is applied on `/auth/login` and `/auth/register`
-6. Consider httpOnly cookie auth (`AUTH_USE_HTTPONLY_COOKIE=true`) to reduce XSS token theft risk
-7. Consider refresh tokens for longer sessions
+- **Default (Bearer token)**: token stored in `localStorage` and sent on each request.
+- **More secure option (cookie auth)**:
+  - backend: `AUTH_USE_HTTPONLY_COOKIE=true`
+  - frontend: `VITE_AUTH_USE_COOKIE=true`
+  - benefit: reduces risk of XSS stealing tokens from `localStorage`
+  - note: cookie-based auth may require additional CSRF considerations depending on your deployment and browser settings
 
 ---
 
-## 10. Future Improvements
+## 11. Future Improvements
 
-| Area | Possible Enhancement |
-|------|----------------------|
-| **Reporting** | PDF/Excel reports, custom date ranges, export |
-| **Notifications** | In-app or email alerts for overruns, low stock, approval requests |
-| **Mobile** | Progressive Web App (PWA) or native mobile app |
-| **Audit log** | Track who changed what and when |
-| **Document management** | Store contracts, drawings, certifications |
-| **Multi-tenancy** | Support multiple companies in one deployment |
-| **Advanced analytics** | Dashboards with charts, trends, forecasts |
-| **Two-factor authentication** | 2FA for Admin and Accountant roles |
-| **Offline support** | Work offline and sync when back online |
-| **Internationalization** | Multi-language support |
+- **Audit logs**: track who changed what and when
+- **Notifications**: approvals, low stock, overdue maintenance, overrun alerts
+- **Advanced reporting**: export to Excel/PDF, scheduled reports
+- **Multi-company support (multi-tenancy)**: separate data per organization
+- **Stronger auth**: refresh tokens and optional 2FA
+- **File storage**: external object storage (e.g., S3) for photos/invoices for production-grade durability
 
----
-
-## Document Control
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | March 2025 | — | Initial documentation |
-
----
-
-*This document is intended for client and stakeholder reference. For technical implementation details, refer to the source code and inline comments.*

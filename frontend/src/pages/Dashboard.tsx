@@ -12,7 +12,7 @@ import {
     Truck,
     Wrench,
 } from 'lucide-react'
-import api from '../utils/api'
+import api, { apiBaseURL } from '../utils/api'
 import { useAuth } from '../context/AuthContext'
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
@@ -512,7 +512,7 @@ export default function Dashboard() {
     useEffect(() => {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => {
-            setError('Request timed out. Is the backend running at http://localhost:8080?')
+            setError(`Request timed out. Is the backend running at ${apiBaseURL.replace(/\/api\/v1\/?$/, '')}?`)
             setLoading(false)
             controller.abort()
         }, 15000)
@@ -571,7 +571,7 @@ export default function Dashboard() {
                     <h1>Dashboard</h1>
                     <p style={{ color: '#0f172a', marginTop: '0.5rem', marginBottom: '1rem' }}>{error || 'Failed to load dashboard data.'}</p>
                     <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-secondary)' }}>
-                        Make sure the backend is running at <code style={{ background: '#f1f5f9', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>http://localhost:8080</code> and you are logged in.
+                        Make sure the backend is running at <code style={{ background: '#f1f5f9', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>{apiBaseURL.replace(/\/api\/v1\/?$/, '')}</code> and you are logged in.
                     </p>
                 </div>
             </div>
