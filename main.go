@@ -110,29 +110,49 @@ func main() {
 	// Setup Gin Router
 	r := gin.Default()
 
-	// CORS: allow only configured origins (set CORS_ORIGINS e.g. "http://localhost:3000,https://app.example.com" or "your-app.vercel.app")
+	// CORS: allow configured origins. Supports exact origins and wildcard entries like "*.vercel.app".
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	if corsOrigins == "" {
 		corsOrigins = "http://localhost:3000,http://localhost:5173"
 	}
 	raw := strings.Split(strings.ReplaceAll(corsOrigins, " ", ""), ",")
 	origins := make([]string, 0, len(raw))
+	wildcardSuffixes := make([]string, 0, len(raw))
 	for _, o := range raw {
 		o = strings.TrimSpace(o)
 		if o == "" {
 			continue
 		}
-		if o == "*" || strings.HasPrefix(o, "http://") || strings.HasPrefix(o, "https://") {
-			origins = append(origins, o)
-			continue
+		if !strings.HasPrefix(o, "http://") && !strings.HasPrefix(o, "https://") && o != "*" {
+			o = "https://" + o
 		}
-		origins = append(origins, "https://"+o)
+		o = strings.TrimSuffix(o, "/")
+		if strings.Contains(o, "*.") {
+			o = strings.Replace(o, "*.", "", 1)
+			wildcardSuffixes = append(wildcardSuffixes, o)
+		} else {
+			origins = append(origins, o)
+		}
 	}
 	if len(origins) == 0 {
 		origins = []string{"http://localhost:3000", "http://localhost:5173"}
 	}
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     origins,
+		AllowOrigins: origins,
+		AllowOriginFunc: func(origin string) bool {
+			origin = strings.TrimSpace(strings.TrimSuffix(origin, "/"))
+			for _, allowed := range origins {
+				if origin == allowed {
+					return true
+				}
+			}
+			for _, suffix := range wildcardSuffixes {
+				if strings.HasSuffix(origin, suffix) {
+					return true
+				}
+			}
+			return false
+		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization", "Accept"},
 		AllowCredentials: true,
