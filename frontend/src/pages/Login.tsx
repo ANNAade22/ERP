@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
@@ -118,7 +118,7 @@ export default function Login() {
                     </form>
 
                     <p className="login-signup-text">
-                        Don't have an account? <Link to="/signup" className="login-signup-link">Sign Up</Link>
+                        Accounts are created by an administrator.
                     </p>
                 </div>
             </div>

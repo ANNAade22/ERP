@@ -146,7 +146,6 @@ func main() {
 		authGroup := api.Group("/auth")
 		authGroup.Use(middleware.AuthRateLimit(10))
 		{
-			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
 			authGroup.POST("/logout", authHandler.Logout)
 		}
