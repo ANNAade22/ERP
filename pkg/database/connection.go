@@ -35,8 +35,12 @@ func Connect(cfg Config) (*gorm.DB, error) {
 			cfg.Host, cfg.User, cfg.Password, cfg.DBName, cfg.Port, cfg.SSLMode)
 	}
 
+	logMode := logger.Info
+	if os.Getenv("GIN_MODE") == "release" {
+		logMode = logger.Warn
+	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logMode),
 	})
 	if err != nil {
 		return nil, err
@@ -68,31 +72,34 @@ func Connect(cfg Config) (*gorm.DB, error) {
 
 	log.Println("Connected to PostgreSQL database successfully.")
 
-	// Auto Migrate the models
-	err = db.AutoMigrate(
-		&models.User{},
-		&models.Project{},
-		&models.Worker{},
-		&models.Attendance{},
-		&models.Expense{},
-		&models.Vendor{},
-		&models.Material{},
-		&models.PurchaseRequest{},
-		&models.PurchaseRequestItem{},
-		&models.StockMovement{},
-		&models.Milestone{},
-		&models.SitePhoto{},
-		&models.Equipment{},
-		&models.MaintenanceTask{},
-		&models.EquipmentSchedule{},
-		&models.Invoice{},
-		&models.Payment{},
-	)
-	if err != nil {
-		return nil, err
+	autoMigrate := getEnvBool("AUTO_MIGRATE", true)
+	if autoMigrate {
+		err = db.AutoMigrate(
+			&models.User{},
+			&models.Project{},
+			&models.Worker{},
+			&models.Attendance{},
+			&models.Expense{},
+			&models.Vendor{},
+			&models.Material{},
+			&models.PurchaseRequest{},
+			&models.PurchaseRequestItem{},
+			&models.StockMovement{},
+			&models.Milestone{},
+			&models.SitePhoto{},
+			&models.Equipment{},
+			&models.MaintenanceTask{},
+			&models.EquipmentSchedule{},
+			&models.Invoice{},
+			&models.Payment{},
+		)
+		if err != nil {
+			return nil, err
+		}
+		log.Println("Database migration completed.")
+	} else {
+		log.Println("AUTO_MIGRATE=false, skipping schema auto-migration.")
 	}
-
-	log.Println("Database migration completed.")
 
 	return db, nil
 }
@@ -109,5 +116,18 @@ func getEnvInt(key string, defaultValue int) int {
 		return defaultValue
 	}
 
+	return parsed
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	val := os.Getenv(key)
+	if val == "" {
+		return defaultValue
+	}
+	parsed, err := strconv.ParseBool(val)
+	if err != nil {
+		log.Printf("Invalid %s value %q, using default %v", key, val, defaultValue)
+		return defaultValue
+	}
 	return parsed
 }
