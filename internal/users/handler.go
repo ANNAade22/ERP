@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -75,6 +76,7 @@ func (h *Handler) CreateUser(c *gin.Context) {
 			utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 			return
 		}
+		log.Printf("CreateUser: %v", err)
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to create user")
 		return
 	}

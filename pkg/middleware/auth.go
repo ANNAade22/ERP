@@ -53,9 +53,22 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		}
 
 		c.Set("userID", claims["sub"])
-		c.Set("userEmail", claims["email"])
-		c.Set("userRole", claims["role"])
+		c.Set("userEmail", claimString(claims, "email"))
+		c.Set("userRole", claimString(claims, "role"))
 
 		c.Next()
+	}
+}
+
+func claimString(claims jwt.MapClaims, key string) string {
+	v, ok := claims[key]
+	if !ok || v == nil {
+		return ""
+	}
+	switch s := v.(type) {
+	case string:
+		return s
+	default:
+		return fmt.Sprint(s)
 	}
 }
