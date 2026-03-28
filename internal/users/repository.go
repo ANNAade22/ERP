@@ -11,6 +11,8 @@ import (
 type Repository interface {
 	CreateUser(ctx context.Context, user *models.User) error
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
+	// GetUserByEmailUnscoped finds a user by email including soft-deleted rows (for admin create / uniqueness).
+	GetUserByEmailUnscoped(ctx context.Context, email string) (*models.User, error)
 	GetUserByID(ctx context.Context, id string) (*models.User, error)
 	ListUsers(ctx context.Context, roleFilter string, activeOnly *bool) ([]models.User, error)
 	UpdateUserRole(ctx context.Context, id string, role models.Role) (*models.User, error)
@@ -37,6 +39,15 @@ func (r *repository) CreateUser(ctx context.Context, user *models.User) error {
 func (r *repository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 	err := r.db.WithContext(ctx).Where("email = ?", email).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *repository) GetUserByEmailUnscoped(ctx context.Context, email string) (*models.User, error) {
+	var user models.User
+	err := r.db.WithContext(ctx).Unscoped().Where("email = ?", email).First(&user).Error
 	if err != nil {
 		return nil, err
 	}

@@ -3,11 +3,13 @@ package users
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"erp-project/internal/models"
 	"erp-project/pkg/utils"
 
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 var (
@@ -45,7 +47,11 @@ func (s *service) CreateUser(ctx context.Context, name, email, password string, 
 	if !isValidRole(role) {
 		return nil, ErrInvalidRole
 	}
-	existing, _ := s.repo.GetUserByEmail(ctx, email)
+	email = strings.TrimSpace(strings.ToLower(email))
+	existing, err := s.repo.GetUserByEmailUnscoped(ctx, email)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
 	if existing != nil {
 		return nil, ErrUserAlreadyExists
 	}
@@ -64,6 +70,9 @@ func (s *service) CreateUser(ctx context.Context, name, email, password string, 
 		Active:       true,
 	}
 	if err := s.repo.CreateUser(ctx, user); err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return nil, ErrUserAlreadyExists
+		}
 		return nil, err
 	}
 	return user, nil
